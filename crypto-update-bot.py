@@ -13,6 +13,14 @@ CHANNEL_ID = "YOUR_CHANNEL_ID"
 MOONING = 4
 FREE_FALL = -10	
 
+def calc_rsi(changes):
+	average_gain = sum(changes["gain"])/14
+	average_loss = sum(changes["loss"])/14
+
+	RS = average_gain / average_loss
+
+	return 100 - (100 / (1 + RS))
+
 def get_percent_change(old_price, new_price):
 	return round( float ( ( (new_price - old_price ) / old_price ) * 100 ) 	, 2)
 
@@ -26,7 +34,7 @@ def get_output(market, percent_change, exchange):
 	return " ".join(everything)
 
 
-def check_bittrex_markets(old_markets):
+def check_bittrex_markets(old_markets, m_history):
 
 	outputs = []
 	price_updates = {}
@@ -64,8 +72,7 @@ def check_bittrex_markets(old_markets):
 
 	return (outputs, price_updates)
 
-
-def check_binance_markets(old_markets):
+def check_binance_markets(old_markets, m_hist):
 	outputs = []
 	price_updates = {}
 
@@ -99,15 +106,15 @@ def check_binance_markets(old_markets):
 
 def update_market_history(history, market, change):
 	if market not in history:
-		history[market] = {"gains": deque(), "losses": deque()}
+		history[market] = {"gain": deque(), "loss": deque()}
 	else:
 		m_hist = history["market"]
 		if change > 0:
-			m_hist["gains"].append(change)
-			m_hist["losses"].append(0)
+			m_hist["gain"].append(change)
+			m_hist["loss"].append(0)
 		else:	
-			m_hist["losses"].append(change)
-			m_hist["gains"].append(0)
+			m_hist["loss"].append(change)
+			m_hist["gain"].append(0)
 	
 	return history
 
@@ -145,7 +152,8 @@ async def on_ready():
 			change = get_percent_change(market["Last"], price)
 			market_history = update_market_history(market_history, market, change)		
 
-			market["price"] = price
+			
+		market["price"] = price
 
 		
 		# send out outputs
