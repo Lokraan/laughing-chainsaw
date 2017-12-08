@@ -1,5 +1,6 @@
 
 from collections import deque
+import os.path
 import requests
 import json
 import time
@@ -10,8 +11,8 @@ import trading_tools
 client = discord.Client()
 
 # Connecting to discord
-CLIENT_TOKEN = "YOUR_TOKEN_HERE"
-CHANNEL_ID = "YOUR_CHANNEL_HERE"
+CLIENT_TOKEN = "Mzg0ODA5MzU4NTc3MzY5MDk5.DP4NUQ.Ht734YmbZsy-xYDcle7Rf52JAr8"
+CHANNEL_ID = "384895816998977543"
 
 # Vals to flag growth
 MOONING = 4
@@ -152,7 +153,7 @@ market: {
 """
 
 def update_market_history(market, change):
-	m_histories = json.load(M_HISTORIES_FNAME)
+	m_histories = json.load(open(M_HIST_FNAME, 'r'))
 	if market not in m_histories:
 		m_histories[market] = {"gain": deque(maxlen=RSI_LENGTH), "loss": deque(maxlen=RSI_LENGTH), "avg_gain": None, "avg_loss": None}
 	else:
@@ -166,9 +167,12 @@ def update_market_history(market, change):
 			m_hist["loss"].append(change)
 			m_hist["gain"].append(0)
 
+	m_histories.close()
+
 	m_histories = open(M_HIST_FNAME, 'w')
 	json.dump(m_histories)
 
+	m_histories.close()
 """
 
 MAIN GOES HERE 
@@ -183,6 +187,10 @@ async def on_ready():
 
 	bittrex_markets = json.loads(requests.get("https://bittrex.com/api/v1.1/public/getmarketsummaries").text)
 	binance_markets = json.loads(requests.get("https://api.binance.com/api/v1/ticker/allPrices").text)
+	
+	if not os.path.isfile(M_HIST_FNAME):
+		f = open(M_HIST_FNAME, 'w')
+		f.close()
 	
 	while True:
 		# update bittrex markets
@@ -207,4 +215,6 @@ async def on_ready():
 		for out in outputs:
 			await client.send_message(target_channel, out)
 			await asyncio.sleep(1)
-					
+			
+	
+client.run(CLIENT_TOKEN)
