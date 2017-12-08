@@ -1,4 +1,5 @@
 
+from collections import deque
 import requests
 import json
 import time
@@ -96,6 +97,20 @@ def check_binance_markets(old_markets):
 
 	return (outputs, price_updates)
 
+def update_market_history(history, market, change):
+	if market not in history:
+		history[market] = {"gains": deque(), "losses": deque()}
+	else:
+		m_hist = history["market"]
+		if change > 0:
+			m_hist["gains"].append(change)
+			m_hist["losses"].append(0)
+		else:	
+			m_hist["losses"].append(change)
+			m_hist["gains"].append(0)
+	
+	return history
+
 @client.event
 async def on_ready():
 	target_channel = client.get_channel(CHANNEL_ID)
@@ -106,31 +121,33 @@ async def on_ready():
 	bittrex_markets = json.loads(requests.get("https://bittrex.com/api/v1.1/public/getmarketsummaries").text)
 	binance_markets = json.loads(requests.get("https://api.binance.com/api/v1/ticker/allPrices").text)
 
+	RSI_HISTORY_LENGTH = 14
 	market_history = {}
-
+		
 	while True:
 
 		# update bittrex markets
-		outputs, price_updates = check_bittrex_markets(bittrex_markets)
+		outputs, price_updates = check_bittrex_markets(bittrex_markets, market_history)
 		for i, price in price_updates.items():
 			market = bittrex_markets["result"][i]
 			
-			# Calculate RSI
+			# update market hitory for rsi
 			change = get_percent_change(market["Last"], price)
-			if(market not in market_history):
-				market_history[market] = {"gains": [], "losses": []}
-			else:
-				if change > 0:
-					market_history[market]["gains"]
-					
-			market["Last"] = price
-
+			market_history = update_market_history(market_history, market, change)			
+		
+		market["Last"] = price
 
 		# update Binance markets
-		outputs2, price_updates = check_binance_markets(binance_markets)
-		for i, price in price_updates.items():
-			binance_markets[i]["price"] = price
+		outputs2, price_updates = check_binance_markets(binance_markets, market_history)
+		for i, price in price_updates2.items():
+			market = binance_markets[i]
+			
+			change = get_percent_change(market["Last"], price)
+			market_history = update_market_history(market_history, market, change)		
 
+			market["price"] = price
+
+		
 		# send out outputs
 		outputs.extend(outputs2)
 		for out in outputs:
