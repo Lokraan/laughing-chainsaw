@@ -36,6 +36,8 @@ def calc_rsi(gains, losses, last_avg_gain=None, last_avg_loss=None, ret_averages
 	except ZeroDivisionError:
 		# No losses at all bb
 		RSI = 100
+		if average_gain == 0:
+			RSI = 0
 	
 	if not ret_averages:
 		return RSI

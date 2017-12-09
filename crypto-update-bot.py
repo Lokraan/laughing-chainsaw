@@ -23,26 +23,35 @@ M_HIST_FNAME = "market_histories.dat"
 RSI_LENGTH = 14
 
 def get_percent_change(old_price, new_price):
-	return round( float ( ( (new_price - old_price ) / old_price ) * 100 ) 	, 2)
+	return round( ( (float(new_price) - float(old_price) ) / float(old_price) )  * 100 , 2)
 
 def get_output(market, percent_change, exchange):
 	prefix = "increased by"
 	if(percent_change < 0):
 		prefix = "decreased by"
 
-	m_histories = json.load(M_HIST_FNAME)
+	with open(M_HIST_FNAME) as f:
+		m_histories = json.load(f)
+
 	m_changes = m_histories[market]
 	
 	# Data to calc RSI
-	gains = m_changes["gains"]
-	losses = m_changes["losses"]
+	gains = m_changes["gain"]
+	losses = m_changes["loss"]
 	last_avg_gain = m_changes["avg_gain"]
 	last_avg_loss = m_changes["avg_loss"]
+	
+	try:
+		rsi, avg_loss, avg_gain = trading_tools.calc_rsi(gains, losses, 
+			last_avg_gain=last_avg_gain, last_avg_loss=last_avg_loss, ret_averages=True)	
 
-	rsi = trading_tools.calc_rsi(gains, losses, 
-		last_avg_gain=last_avg_gain, last_avg_loss=last_avg_loss, ret_averages=True)
+		m_changes["avg_gain"] = avg_gain
+		m_changes["avg_loss"] = avg_loss
+	except AssertionError:
+		rsi = "N/A"
+		m_changes["avg_gain"] = avg
 
-	everything = ["```\n", market, prefix, str(percent_change) + "%", "on" + exchange, "RSI:", rsi, "\n```"]
+	everything = ["```\n", market, prefix, str(percent_change) + "%", "on" + exchange, "RSI:", str(rsi), "\n```"]
 	return " ".join(everything)
 
 """
@@ -64,8 +73,6 @@ def check_bittrex_markets(old_markets):
 
 	# get percent change through all the markets
 	for i, old_market in enumerate(old_markets["result"]):
-
-		# print(i)
 		try:
 			new_market = new_markets["result"][i]
 
@@ -100,7 +107,6 @@ Checks the binance markets and checks to see if market is MOONING or in FREE_FAL
 If MOONING or in FREE_FALL it creats an output for it consisting of it's:
 	name
 	exchange it's on
-	percent growth or decline
 	and it's RSI val
 
 It also updates the market_history for the market
@@ -151,30 +157,32 @@ market: {
 }
 
 """
-
 def update_market_history(market, change):
-	if not os.stat(M_HIST_FNAME).st_size == 0:
-		with open(M_HIST_FNAME, 'r') as f:
-			m_histories = json.load(f)
-	else:
-		m_histories = {}
-	
+	with open(M_HIST_FNAME, 'r') as f:
+		m_histories = json.load(f)
+		
 	if market not in m_histories:
-		m_histories[market] = {"gain": deque(maxlen=RSI_LENGTH), "loss": deque(maxlen=RSI_LENGTH), "avg_gain": None, "avg_loss": None}
-	else:
-		m_hist = m_histories[market]
-		m_hist["gain"] = deque(m_hist["gain"], RSI_LENGTH)
-		m_hist["loss"] = deque(m_hist["loss"], RSI_LENGTH)
-		if change > 0:
-			m_hist["gain"].append(change)
-			m_hist["loss"].append(0)
-		else:	
-			m_hist["loss"].append(change)
-			m_hist["gain"].append(0)
+		m_histories[market] = { "gain": [], "loss": [], "avg_gain": None, "avg_loss": None }
+	
+	m_hist = m_histories[market]
+	m_hist["gain"] = deque(m_hist["gain"], RSI_LENGTH)
+	m_hist["loss"] = deque(m_hist["loss"], RSI_LENGTH)
+	if change > 0:
+		m_hist["gain"].append(change)
+		m_hist["loss"].append(0)
+	else:	
+		m_hist["loss"].append(abs(change))
+		m_hist["gain"].append(0)
+
+	m_hist["gain"] = list(m_hist["gain"])
+	m_hist["loss"] = list(m_hist["loss"])
+
+#		if change > MOONING or change < FREE_FALL:
+#			print(m_hist)
 
 	# Deposit the memes
 	with open(M_HIST_FNAME, 'w') as f:
-		json.dump(m_histories, f)
+		json.dump(m_histories, f, indent=4, sort_keys=True)
 
 """
 
@@ -191,26 +199,21 @@ async def on_ready():
 	bittrex_markets = json.loads(requests.get("https://bittrex.com/api/v1.1/public/getmarketsummaries").text)
 	binance_markets = json.loads(requests.get("https://api.binance.com/api/v1/ticker/allPrices").text)
 	
-	if not os.path.isfile(M_HIST_FNAME):
-		with open(M_HIST_FNAME, 'w') as f:
-			json.dump("{}", f)		
+	# restart file
+	with open(M_HIST_FNAME, 'w') as f:
+		json.dump({}, f)		
 	
 	while True:
 		# update bittrex markets
 		outputs, price_updates = check_bittrex_markets(bittrex_markets)
 		for i, price in price_updates.items():
 			market = bittrex_markets["result"][i]
-			
-			# update market hitory for rsi
-			change = get_percent_change(market["Last"], price)
 			market["Last"] = price
 
 		# update Binance markets
 		outputs2, price_updates = check_binance_markets(binance_markets)
 		for i, price in price_updates.items():
-			market = binance_markets[i]
-			
-			change = get_percent_change(market["Last"], price)
+			market = binance_markets[i]			
 			market["price"] = price
 		
 		# send out outputs
