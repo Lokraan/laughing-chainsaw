@@ -1,6 +1,6 @@
 
 from collections import deque
-import os.path
+import os
 import requests
 import json
 import time
@@ -153,7 +153,12 @@ market: {
 """
 
 def update_market_history(market, change):
-	m_histories = json.load(open(M_HIST_FNAME, 'r'))
+	if not os.stat(M_HIST_FNAME).st_size == 0:
+		with open(M_HIST_FNAME, 'r') as f:
+			m_histories = json.load(f)
+	else:
+		m_histories = {}
+	
 	if market not in m_histories:
 		m_histories[market] = {"gain": deque(maxlen=RSI_LENGTH), "loss": deque(maxlen=RSI_LENGTH), "avg_gain": None, "avg_loss": None}
 	else:
@@ -167,12 +172,10 @@ def update_market_history(market, change):
 			m_hist["loss"].append(change)
 			m_hist["gain"].append(0)
 
-	m_histories.close()
+	# Deposit the memes
+	with open(M_HIST_FNAME, 'w') as f:
+		json.dump(m_histories, f)
 
-	m_histories = open(M_HIST_FNAME, 'w')
-	json.dump(m_histories)
-
-	m_histories.close()
 """
 
 MAIN GOES HERE 
@@ -189,8 +192,8 @@ async def on_ready():
 	binance_markets = json.loads(requests.get("https://api.binance.com/api/v1/ticker/allPrices").text)
 	
 	if not os.path.isfile(M_HIST_FNAME):
-		f = open(M_HIST_FNAME, 'w')
-		f.close()
+		with open(M_HIST_FNAME, 'w') as f:
+			json.dump("{}", f)		
 	
 	while True:
 		# update bittrex markets
