@@ -70,6 +70,9 @@ class Bot:
 		return round((new_price - old_price) / old_price, 4) * 100
 
 
+	def _create_embed(self, ) -> discord.Embed: 
+		return 0
+
 	def _get_output(self, *items: list) -> str:
 		"""
 		Creates a discord friendly formatting and returns it.
@@ -290,10 +293,11 @@ class Bot:
 		# self._logger.debug("Processing {0}".format(name))
 
 		change = self._percent_change(new_price, old_price)
-		self._logger.debug("{0} Change {1} old_price {2} new_price {3}".format(name, change, old_price, new_price))
+		self._logger.debug("{0} Change {1} old_price {2} new_price {3}".
+			format(name, change, old_price, new_price)
+			)
 
-		# possibility of RSI increase and price increase being triggered at the same time
-		outs = []
+		outs = {"rsi": [], "price_updates": []}
 
 		# Calculating RSI only works for bittrex rn
 		if exchange == "Bittrex":
@@ -304,11 +308,9 @@ class Bot:
 				# make sure that rsi hasn't been significant yet
 				if name not in self._significant_markets:
 					self._logger.debug("Not significant yet, creating output")
-					outs.append( 
-						self._get_output ( 
-							[name, "RSI:", str(rsi)] 
-							)
-						)
+
+					outs["rsi"].append(self._get_output([name, "RSI:", str(rsi)]))
+
 					self._significant_markets.add(name)
 
 			elif name in self._significant_markets:
@@ -321,10 +323,8 @@ class Bot:
 
 		if change >= self._mooning or change <= self._free_fall:
 			self._logger.debug("Change significant, creating output")
-			outs.append( 
-				self._get_output ( 
-					[ name, "changed by", str ( change ), "on", exchange ] 
-					) 
+			outs["price_updates"].append( 
+				self._get_output([name, "changed by", str(change), "on", exchange])
 				)
 
 		self._logger.debug("Outputs: {0}".format(outs))
@@ -342,7 +342,7 @@ class Bot:
 			tuple of outputs & price updates
 		
 		"""
-		outputs = []
+		outputs = {"rsi": [], "price_updates": []}
 		price_updates = {}
 
 		new_markets = await self._get_binance_markets(session)
@@ -371,11 +371,16 @@ class Bot:
 				}
 
 				out = await self._process_market(session, info)
-				if out:
-					outputs.extend(out)
-					change = self._percent_change(new_price, old_price)
-					if change >= self._mooning or change <= self._free_fall:
-						price_updates[i] = new_price
+				outputs = {
+					key: outputs[key].extend(val)
+					for key, val 
+					in out.items()
+				}
+
+				# make sure price updates
+				change = self._percent_change(new_price, old_price)
+				if change >= self._mooning or change <= self._free_fall:
+					price_updates[i] = new_price
 
 		return (outputs, price_updates)
 
@@ -427,12 +432,16 @@ class Bot:
 				}
 
 				out = await self._process_market(session, info)
-				if out:
-					outputs.extend(out)
-					change = self._percent_change(new_price, old_price)
-					if change >= self._mooning or change <= self._free_fall:
-						price_updates[i] = new_price
+				outputs = {
+					key: outputs[key].extend(val)
+					for key, val 
+					in out.items()
+				}
 
+				# make sure price updates
+				change = self._percent_change(new_price, old_price)
+				if change >= self._mooning or change <= self._free_fall:
+					price_updates[i] = new_price
 
 		return (outputs, price_updates)
 
