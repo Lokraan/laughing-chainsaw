@@ -68,7 +68,7 @@ class Bot:
 			Float of the percent change rounded to 4 sig figs. IE 60.49
 
 		"""
-		return round(((new_price - old_price) / old_price) * 100, 4)
+		return round(((new_price - old_price) / old_price) * 100, 2)
 
 
 	def _create_embed(self, outputs: dict) -> discord.Embed: 
@@ -113,7 +113,7 @@ class Bot:
 
 		"""
 
-		return " ".join(*items) + "\n"
+		return " ".join(*items) + "\n\n"
 
 
 	async def _query_exchange(self, session: aiohttp.ClientSession, url: str, depth: int = 0,
