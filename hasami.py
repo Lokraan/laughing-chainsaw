@@ -1,7 +1,9 @@
 
 import logging.config
+import datetime
 import logging
 import asyncio
+import random
 import yaml
 import json
 import sys
@@ -32,7 +34,6 @@ class Bot:
 		_interval: Time to wait between each analysis of the markets.
 		_rsi_tick_interval: Interval between each price update used to calculate the markets.
 		_rsi_time_frame: Number of candles used to calculate RSI.
-
 
 	"""
 	def __init__(self, client: discord.Client, config: dict, logger: logging.Logger):
@@ -67,12 +68,42 @@ class Bot:
 			Float of the percent change rounded to 4 sig figs. IE 60.49
 
 		"""
-		return round((new_price - old_price) / old_price, 4) * 100
+		return round(((new_price - old_price) / old_price) * 100, 2)
 
+
+	def _create_embed(self, outputs: dict) -> discord.Embed: 
+		"""
+		Generates a pretty embed for discord consisting of two groups,
+		the significant price changes / RSI vals.
+
+		Args:
+			outputs: Dictionary of rsi and price update outputs
+
+		Returns:
+			a discord.Embed of price/rsi updates
+
+		"""
+
+		r = lambda: random.randint(0, 255)
+		color = (r(), r(), r())
+		hex_color = (int("0x%02x%02x%02x" % color, 16))
+
+		embed = discord.Embed(
+			title="Updates @ {}".format(datetime.datetime.now().strftime("%H:%M")), type="rich", 
+			colour=discord.Colour(hex_color), 
+			)
+
+		if outputs["rsi"]:
+			embed.add_field(name="RSI", value="".join(outputs["rsi"]))
+
+		if outputs["price_updates"]:
+			embed.add_field(name="Price Updates", value="".join(outputs["price_updates"]))
+
+		return embed
 
 	def _get_output(self, *items: list) -> str:
 		"""
-		Creates a discord friendly formatting and returns it.
+		Creates a discord.Embed friendly formatting and returns it.
 
 		Args:
 			*items: Items to concatonate together into one output.
@@ -81,11 +112,8 @@ class Bot:
 			Discord friendly text !
 
 		"""
-		ret = "```\n"
-		ret += " ".join(*items)
-		ret += ("\n```")
 
-		return ret
+		return " ".join(*items) + "\n\n"
 
 
 	async def _query_exchange(self, session: aiohttp.ClientSession, url: str, depth: int = 0,
@@ -290,10 +318,11 @@ class Bot:
 		# self._logger.debug("Processing {0}".format(name))
 
 		change = self._percent_change(new_price, old_price)
-		self._logger.debug("{0} Change {1} old_price {2} new_price {3}".format(name, change, old_price, new_price))
+		self._logger.debug("{0} Change {1} old_price {2} new_price {3}".
+			format(name, change, old_price, new_price)
+			)
 
-		# possibility of RSI increase and price increase being triggered at the same time
-		outs = []
+		outs = {"rsi": [], "price_updates": []}
 
 		# Calculating RSI only works for bittrex rn
 		if exchange == "Bittrex":
@@ -304,11 +333,9 @@ class Bot:
 				# make sure that rsi hasn't been significant yet
 				if name not in self._significant_markets:
 					self._logger.debug("Not significant yet, creating output")
-					outs.append( 
-						self._get_output ( 
-							[name, "RSI:", str(rsi)] 
-							)
-						)
+
+					outs["rsi"].append(self._get_output([name, "RSI:", str(rsi)]))
+
 					self._significant_markets.add(name)
 
 			elif name in self._significant_markets:
@@ -321,10 +348,8 @@ class Bot:
 
 		if change >= self._mooning or change <= self._free_fall:
 			self._logger.debug("Change significant, creating output")
-			outs.append( 
-				self._get_output ( 
-					[ name, "changed by", str ( change ), "on", exchange ] 
-					) 
+			outs["price_updates"].append( 
+				self._get_output([name, "changed by", str(change), "on", exchange])
 				)
 
 		self._logger.debug("Outputs: {0}".format(outs))
@@ -342,7 +367,7 @@ class Bot:
 			tuple of outputs & price updates
 		
 		"""
-		outputs = []
+		outputs = {"rsi": [], "price_updates": []}
 		price_updates = {}
 
 		new_markets = await self._get_binance_markets(session)
@@ -371,11 +396,12 @@ class Bot:
 				}
 
 				out = await self._process_market(session, info)
-				if out:
-					outputs.extend(out)
-					change = self._percent_change(new_price, old_price)
-					if change >= self._mooning or change <= self._free_fall:
-						price_updates[i] = new_price
+				for key, val in out.items(): outputs[key].extend(val)
+
+				# make sure price updates
+				change = self._percent_change(new_price, old_price)
+				if change >= self._mooning or change <= self._free_fall:
+					price_updates[i] = new_price
 
 		return (outputs, price_updates)
 
@@ -393,7 +419,7 @@ class Bot:
 		"""
 		self._logger.debug("Checking bittrex markets")
 
-		outputs = []
+		outputs = {"rsi": [], "price_updates": []}
 		price_updates = {}
 
 		new_markets = await self._get_bittrex_markets(session)
@@ -427,12 +453,12 @@ class Bot:
 				}
 
 				out = await self._process_market(session, info)
-				if out:
-					outputs.extend(out)
-					change = self._percent_change(new_price, old_price)
-					if change >= self._mooning or change <= self._free_fall:
-						price_updates[i] = new_price
+				for key, val in out.items(): outputs[key].extend(val)
 
+				# make sure price updates
+				change = self._percent_change(new_price, old_price)
+				if change >= self._mooning or change <= self._free_fall:
+					price_updates[i] = new_price
 
 		return (outputs, price_updates)
 
@@ -516,20 +542,18 @@ class Bot:
 					session
 					)
 
-				outputs.extend(outputs2)
+				for key, val in outputs2.items(): outputs[key].extend(val)
 				self._logger.debug("Outputs: {0}".format(outputs))
 
 				self._update_prices(price_updates)
 
-				for out in outputs:
-					self._logger.info("Out: {0}".format(out))
-					await self._client.send_message(
-						discord.Object(id=self._update_channel), 
-						out
-						)
+				embed = self._create_embed(outputs)
+				await self._client.send_message(
+					destination=discord.Object(id=self._update_channel), embed=embed
+					)
 
 				self._logger.debug("Async sleeping {0}".format(str(self._interval * 60)))
-				await asyncio.sleep ( int ( self._interval * 60 ) )
+				await asyncio.sleep(int(self._interval*60))
 
 
 	async def start_checking_markets(self, message: discord.Message) -> None:
@@ -655,13 +679,7 @@ if __name__ == '__main__':
 		elif content.startswith("$help"):
 			await client.send_message(
 				message.channel, "```Starts checking bittrex and binance markets and\
-				 prints the significant changes.\n" +
-					"Args\n" + 
-					"-h\tPrints this\n" + 
-					"-i\tPeriod of time spent inbetween checking the markets\n" + 
-					"-h\tHigh point to print notification\n" + 
-					"-l\tLow point to print notification"
-					)
+				 prints the significant changes.\n")
 
 		elif content.startswith("$start"):
 			await bot.start_checking_markets(message)
