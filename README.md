@@ -67,7 +67,6 @@ When a market's rsi value is greater than or equal to `over_bought` or `over_sol
 
 ## TODO
 1. Price display under `playing` on bot.
-2. Improved discord printing.
-3. Support for more exchanges.
-4. Move to v2.0 of bittrex api.
+2. Support for more exchanges.
+3. Move to v2.0 of bittrex api.
 
