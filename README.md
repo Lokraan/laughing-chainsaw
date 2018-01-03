@@ -19,8 +19,9 @@ For basic personal use you need to set `"token"` to your personal bot's token, a
 
 ### Requirements
 - Python >= 3.5.3
-- [discord](https://github.com/Rapptz/discord.py)
-- [aiohttp](https://github.com/aio-libs/aiohttp)
+- [discord](https://github.com/Rapptz/discord.py) (pip install discord)
+- [aiohttp](https://github.com/aio-libs/aiohttp) (pip install aiohttp) 
+- [pyyaml](https://github.com/yaml/pyyaml) (pip install pyyaml)
 
 
 ### Configuration
