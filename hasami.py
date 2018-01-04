@@ -71,7 +71,21 @@ class Bot:
 		return round(((new_price - old_price) / old_price) * 100, 2)
 
 
-	def _create_embed(self, outputs: dict) -> discord.Embed: 
+	def _create_embed_text(self, outputs: str) -> str:
+		"""
+		Creates nicely formatted text for embed
+
+		Args:
+			outputs: str for comncatentation
+
+		Returns:
+			a str with discord highlight.js formatting using ini
+		"""
+
+		return "```ini\n{}```".format(outputs)
+
+
+	def _create_embed(self, outputs: list) -> discord.Embed: 
 		"""
 		Generates a pretty embed for discord consisting of two groups,
 		the significant price changes / RSI vals.
@@ -80,7 +94,7 @@ class Bot:
 			outputs: Dictionary of rsi and price update outputs
 
 		Returns:
-			a discord.Embed of price/rsi updates
+			a discord.Embed of items inside the list
 
 		"""
 
@@ -89,17 +103,17 @@ class Bot:
 		hex_color = (int("0x%02x%02x%02x" % color, 16))
 
 		embed = discord.Embed(
-			title="Updates @ {}".format(datetime.datetime.now().strftime("%H:%M")), type="rich", 
-			colour=discord.Colour(hex_color), 
+			title="Updates\n", type="rich", 
+			timestamp=datetime.datetime.now(),
+			colour=discord.Colour(hex_color)
 			)
 
-		if outputs["rsi"]:
-			embed.add_field(name="RSI", value="".join(outputs["rsi"]))
-
-		if outputs["price_updates"]:
-			embed.add_field(name="Price Updates", value="".join(outputs["price_updates"]))
+		for key, val in outputs.items():
+			if len(val) > 0:
+				embed.add_field(name="\n"+key, value="```ini\n%s```" % ''.join(val))
 
 		return embed
+
 
 	def _get_output(self, *items: list) -> str:
 		"""
@@ -276,7 +290,7 @@ class Bot:
 			avg_loss = (avg_loss * (interval - 1) + loss) / interval
 
 		RS = avg_gain / avg_loss
-		RSI = int ( 100 - ( 100 / ( 1 + RS ) ) )
+		RSI = int(100 - ( 100 / (1 + RS)))
 
 		return RSI
 	
@@ -334,7 +348,7 @@ class Bot:
 				if name not in self._significant_markets:
 					self._logger.debug("Not significant yet, creating output")
 
-					outs["rsi"].append(self._get_output([name, "RSI:", str(rsi)]))
+					outs["rsi"].append(self._get_output(["[%s]" % name, "RSI:", "[%s]" % str(rsi)]))
 
 					self._significant_markets.add(name)
 
@@ -345,11 +359,10 @@ class Bot:
 				self._significant_markets.remove(name)
 
 
-
 		if change >= self._mooning or change <= self._free_fall:
 			self._logger.debug("Change significant, creating output")
 			outs["price_updates"].append( 
-				self._get_output([name, "changed by", str(change), "on", exchange])
+				self._get_output(["[%s]" % name, "changed by", "[%s]" % str(change), "on", exchange])
 				)
 
 		self._logger.debug("Outputs: {0}".format(outs))
@@ -491,7 +504,6 @@ class Bot:
 		# update bittrex markets
 		bittrex_markets = self._markets["Bittrex"]["result"]
 		for i, price in price_updates["Bittrex"].items():
-
 			self._logger.debug("Market: {0} Last: {1} New: {2}".format(
 				bittrex_markets[i]["MarketName"], bittrex_markets[i]["Last"], price)
 			)
@@ -501,7 +513,6 @@ class Bot:
 		# Update binance markets
 		binance_markets = self._markets["Binance"]
 		for i, price in price_updates["Binance"].items():
-
 			self._logger.debug("Market: {0} Last: {1} New: {2}".format(
 				binance_markets[i]["symbol"], binance_markets[i]["price"], price)
 			)
@@ -509,20 +520,29 @@ class Bot:
 			binance_markets[i]["price"] = price
 
 
-	async def check_markets(self) -> None:
+	async def check_markets(self, message: discord.Message) -> None:
 		"""
+		Begins checking markets, notifies user who called for it of that it's starting.
+
 		Processes bittrex and binance markets for signifcant price/rsi updates 
-		and sends outputs to discord.
+		and sends outputs to discord. 
 		
 		Does while self._updating is true every interval minutes. 
 
 		Args:
-			None
+			message: The message used to ask the bot to start, used
+			to mention the user that it's starting.
 
 		Returns:
 			None
 		
 		"""
+
+		self._updating = True
+		await self._client.send_message(
+			message.channel , "Starting {0.author.mention} !".format(message)
+			)
+		self._logger.info("Starting to check markets.")
 		async with aiohttp.ClientSession() as session:
 
 			# load markets
@@ -542,38 +562,21 @@ class Bot:
 					session
 					)
 
-				for key, val in outputs2.items(): outputs[key].extend(val)
-				self._logger.debug("Outputs: {0}".format(outputs))
+				# send outputs
+				for key, val in outputs2.items(): 
+					outputs[key].extend(val)
+					self._logger.debug("Outputs: {0}".format(outputs))
 
-				self._update_prices(price_updates)
+					embed = self._create_embed({key: outputs[key]})
 
-				embed = self._create_embed(outputs)
-				await self._client.send_message(
-					destination=discord.Object(id=self._update_channel), embed=embed
-					)
+					await self._client.send_message(
+						destination=discord.Object(id=self._update_channel), embed=embed
+						)
 
 				self._logger.debug("Async sleeping {0}".format(str(self._interval * 60)))
 				await asyncio.sleep(int(self._interval*60))
 
-
-	async def start_checking_markets(self, message: discord.Message) -> None:
-		"""
-		Begins checking markets, notifies user who called for it of that it's starting.
-
-		Args:
-			message: The message used to ask the bot to start, used
-				to mention the user that it's starting.
-
-		Returns:
-			None
-
-		"""
-		self._updating = True
-		await self._client.send_message(
-			message.channel , "Starting {0.author.mention} !".format(message)
-			)
-		self._logger.info("Starting to check markets.")
-		await self.check_markets()
+				self._update_prices(price_updates)
 
 
 	async def stop_checking_markets(self, message: discord.Message) -> None:
@@ -682,7 +685,7 @@ if __name__ == '__main__':
 				 prints the significant changes.\n")
 
 		elif content.startswith("$start"):
-			await bot.start_checking_markets(message)
+			client.loop.create_task(bot.check_markets(message))
 
 		elif content.startswith("$stop"):
 			await bot.stop_checking_markets(message)
