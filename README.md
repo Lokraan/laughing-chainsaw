@@ -38,7 +38,8 @@ All configuration takes place within [config.json](/config.json)
 	"over_bought": 75,
 	"over_sold": 25,
 	"update_interval": 1,
-	"debug": 0
+	"debug": 0,
+	"command_prefix": "$"
 }
 ```
 
@@ -54,6 +55,7 @@ All configuration takes place within [config.json](/config.json)
 | `over_sold` | Over sold value to flag market for printing **(RSI)** | 
 | `update_interval` | Delay between each time it checks the markets (in minutes) |
 | `debug` | Whether in debug mode or not. Increases info logged. |
+| `command_prefix` | Prefix used to specify a command to a bot. |
 
 ### What it's doing
 When a market's growth/decline is greater than or equal to `mooning` or `free_fall`, the bot flags it and prints an update according to this format.
