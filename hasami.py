@@ -672,6 +672,8 @@ if __name__ == '__main__':
 	logger = logging.getLogger("main")
 	bot = Bot(client=client, config=config, logger=logging.getLogger("bot"))
 
+	prefix = config["command_prefix"]
+	
 	# client events
 	@client.event
 	async def on_ready():
@@ -683,21 +685,21 @@ if __name__ == '__main__':
 		content = message.content
 
 		# Default greet
-		if content.startswith("$greet"):
+		if content.startswith("%sgreet" % prefix):
 			await bot.greet(message)
 
-		elif content.startswith("$help"):
+		elif content.startswith("%shelp" % prefix):
 			await client.send_message(
 				message.channel, "```Starts checking bittrex and binance markets and\
 				 prints the significant changes.\n")
 
-		elif content.startswith("$start"):
-			await bot.check_markets(message)
+		elif content.startswith("%sstart" % prefix):
+			await bot.start_checking_markets(message)
 
-		elif content.startswith("$stop"):
+		elif content.startswith("%sstop" % prefix):
 			await bot.stop_checking_markets(message)
 
-		elif content.startswith("$exit"):
+		elif content.startswith("%sexit" % prefix):
 			await bot.exit(message)
 
 	# start
