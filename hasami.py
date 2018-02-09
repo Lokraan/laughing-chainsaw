@@ -71,16 +71,16 @@ class Bot:
 		return round(((new_price - old_price) / old_price) * 100, 2)
 
 
-	def _create_embed(self, outputs: dict) -> discord.Embed: 
+	def _create_embed(self, outputs: tuple) -> discord.Embed: 
 		"""
 		Generates a pretty embed for discord consisting of two groups,
 		the significant price changes / RSI vals.
 
 		Args:
-			outputs: Dictionary of rsi and price update outputs
+			outputs: Tuple of what the data is called and the data.
 
 		Returns:
-			a discord.Embed of price/rsi updates
+			a discord.Embed of items inside the list
 
 		"""
 
@@ -88,18 +88,21 @@ class Bot:
 		color = (r(), r(), r())
 		hex_color = (int("0x%02x%02x%02x" % color, 16))
 
-		embed = discord.Embed(
-			title="Updates @ {}".format(datetime.datetime.now().strftime("%H:%M")), type="rich", 
-			colour=discord.Colour(hex_color), 
-			)
+		key, val = outputs
 
-		if outputs["rsi"]:
-			embed.add_field(name="RSI", value="".join(outputs["rsi"]))
+		if val:
+			embed = discord.Embed(
+				title=key, type="rich", 
+				timestamp=datetime.datetime.now(),
+				colour=discord.Colour(hex_color)
+				)
 
-		if outputs["price_updates"]:
-			embed.add_field(name="Price Updates", value="".join(outputs["price_updates"]))
+			embed.add_field(name="\u200b", value="```ini\n%s```" % "\n".join(val))
 
-		return embed
+			return embed
+
+		return None
+
 
 	def _get_output(self, *items: list) -> str:
 		"""
@@ -113,7 +116,7 @@ class Bot:
 
 		"""
 
-		return " ".join(*items) + "\n\n"
+		return " ".join(*items)
 
 
 	async def _query_exchange(self, session: aiohttp.ClientSession, url: str, depth: int = 0,
@@ -132,14 +135,14 @@ class Bot:
 
 		"""
 
-		if depth == max_depth:
+		if depth == max_depth: # max tries passed
 			self._logger.warning("{0} Failed to GET data. Depth: {1}".format(url, depth))
 			return {}
 
 		try:
 			async with session.get(url) as resp:
 				return await resp.json()
-		except aiohttp.errors.ServerDisconnectedError:
+		except aiohttp.errors.ServerDisconnectedError: # Disonnect, retry !
 			self._logger.warning("{0} ServerDisconnectedError".format(url))
 			return await self._query_exchange(session, url, depth=depth+1)
 
@@ -252,6 +255,9 @@ class Bot:
 		losses = []
 		gains = []
 
+		if len(closing_prices) == 0:
+			return 50
+
 		for i in range(1, interval):
 			change = closing_prices[i] - closing_prices[i-1]
 			if change < 0:
@@ -276,7 +282,7 @@ class Bot:
 			avg_loss = (avg_loss * (interval - 1) + loss) / interval
 
 		RS = avg_gain / avg_loss
-		RSI = int ( 100 - ( 100 / ( 1 + RS ) ) )
+		RSI = int(100 - ( 100 / (1 + RS)))
 
 		return RSI
 	
@@ -322,7 +328,7 @@ class Bot:
 			format(name, change, old_price, new_price)
 			)
 
-		outs = {"rsi": [], "price_updates": []}
+		outs = {"RSI": [], "Price Updates": []}
 
 		# Calculating RSI only works for bittrex rn
 		if exchange == "Bittrex":
@@ -334,7 +340,9 @@ class Bot:
 				if name not in self._significant_markets:
 					self._logger.debug("Not significant yet, creating output")
 
-					outs["rsi"].append(self._get_output([name, "RSI:", str(rsi)]))
+					outs["RSI"].append(
+							"[{0}] RSI: [{1}]".format(name, rsi)
+						)
 
 					self._significant_markets.add(name)
 
@@ -345,11 +353,10 @@ class Bot:
 				self._significant_markets.remove(name)
 
 
-
 		if change >= self._mooning or change <= self._free_fall:
 			self._logger.debug("Change significant, creating output")
-			outs["price_updates"].append( 
-				self._get_output([name, "changed by", str(change), "on", exchange])
+			outs["Price Updates"].append(
+				"[{0}] changed by [{1}%] on {2}".format(name, str(change), exchange)
 				)
 
 		self._logger.debug("Outputs: {0}".format(outs))
@@ -367,7 +374,7 @@ class Bot:
 			tuple of outputs & price updates
 		
 		"""
-		outputs = {"rsi": [], "price_updates": []}
+		outputs = {"RSI": [], "Price Updates": []}
 		price_updates = {}
 
 		new_markets = await self._get_binance_markets(session)
@@ -419,7 +426,7 @@ class Bot:
 		"""
 		self._logger.debug("Checking bittrex markets")
 
-		outputs = {"rsi": [], "price_updates": []}
+		outputs = {"RSI": [], "Price Updates": []}
 		price_updates = {}
 
 		new_markets = await self._get_bittrex_markets(session)
@@ -491,7 +498,6 @@ class Bot:
 		# update bittrex markets
 		bittrex_markets = self._markets["Bittrex"]["result"]
 		for i, price in price_updates["Bittrex"].items():
-
 			self._logger.debug("Market: {0} Last: {1} New: {2}".format(
 				bittrex_markets[i]["MarketName"], bittrex_markets[i]["Last"], price)
 			)
@@ -501,7 +507,6 @@ class Bot:
 		# Update binance markets
 		binance_markets = self._markets["Binance"]
 		for i, price in price_updates["Binance"].items():
-
 			self._logger.debug("Market: {0} Last: {1} New: {2}".format(
 				binance_markets[i]["symbol"], binance_markets[i]["price"], price)
 			)
@@ -509,20 +514,43 @@ class Bot:
 			binance_markets[i]["price"] = price
 
 
-	async def check_markets(self) -> None:
+	async def _send_embed(self, embed: discord.Embed, depth: int = 1, max_depth: int = 3):
+		if depth == max_depth:
+			self._logger.error("failed to send embed after %s tries" % depth)
+
+		try:
+			await self._client.send_message(
+				destination=discord.Object(id=self._update_channel), embed=embed
+				)
+		except discord.errors.HTTPException:
+			print(embed, embed.fields, embed.title)
+			self._logger.warning("Failed to send embed try %s" % depth)
+			await self._send_embed(embed=embed, depth=depth+1)
+
+
+	async def check_markets(self, message: discord.Message) -> None:
 		"""
+		Begins checking markets, notifies user who called for it of that it's starting.
+
 		Processes bittrex and binance markets for signifcant price/rsi updates 
-		and sends outputs to discord.
+		and sends outputs to discord. 
 		
 		Does while self._updating is true every interval minutes. 
 
 		Args:
-			None
+			message: The message used to ask the bot to start, used
+			to mention the user that it's starting.
 
 		Returns:
 			None
 		
 		"""
+
+		self._updating = True
+		await self._client.send_message(
+			message.channel , "Starting {0.author.mention} !".format(message)
+			)
+		self._logger.info("Starting to check markets.")
 		async with aiohttp.ClientSession() as session:
 
 			# load markets
@@ -542,38 +570,20 @@ class Bot:
 					session
 					)
 
-				for key, val in outputs2.items(): outputs[key].extend(val)
-				self._logger.debug("Outputs: {0}".format(outputs))
+				# send outputs
+				for key, val in outputs2.items(): 
+					outputs[key].extend(val)
+					self._logger.debug("Outputs: {0}".format(outputs))
 
-				self._update_prices(price_updates)
+					embed = self._create_embed((key, outputs[key]))
 
-				embed = self._create_embed(outputs)
-				await self._client.send_message(
-					destination=discord.Object(id=self._update_channel), embed=embed
-					)
+					if embed:
+						await self._send_embed(embed=embed)
 
 				self._logger.debug("Async sleeping {0}".format(str(self._interval * 60)))
 				await asyncio.sleep(int(self._interval*60))
 
-
-	async def start_checking_markets(self, message: discord.Message) -> None:
-		"""
-		Begins checking markets, notifies user who called for it of that it's starting.
-
-		Args:
-			message: The message used to ask the bot to start, used
-				to mention the user that it's starting.
-
-		Returns:
-			None
-
-		"""
-		self._updating = True
-		await self._client.send_message(
-			message.channel , "Starting {0.author.mention} !".format(message)
-			)
-		self._logger.info("Starting to check markets.")
-		await self.check_markets()
+				self._update_prices(price_updates)
 
 
 	async def stop_checking_markets(self, message: discord.Message) -> None:
