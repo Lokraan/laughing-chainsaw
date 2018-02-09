@@ -6,7 +6,14 @@ class Processor:
 	def __init__(self, logger, config):
 		self._logger = logger
 
-		self._makrets = {}
+		self._rsi_tick_interval = config["rsi_tick_interval"]
+		self._rsi_time_frame = config["rsi_time_frame"]
+		self._over_bought = config["over_bought"]
+		self._free_fall = config["free_fall"]
+		self._over_sold = config["over_sold"]
+		self._mooning = config["mooning"]
+
+		self._markets = {}
 		self._significant_markets = set()
 
 
@@ -69,19 +76,6 @@ class Processor:
 
 			binance_markets[i]["price"] = price
 
-
-	async def _send_embed(self, embed: discord.Embed, depth: int = 1, max_depth: int = 3):
-		if depth == max_depth:
-			self._logger.error("failed to send embed after %s tries" % depth)
-
-		try:
-			await self._client.send_message(
-				destination=discord.Object(id=self._update_channel), embed=embed
-				)
-		except discord.errors.HTTPException:
-			print(embed, embed.fields, embed.title)
-			self._logger.warning("Failed to send embed try %s" % depth)
-			await self._send_embed(embed=embed, depth=depth+1)
 
 	def percent_change(self, new_price: int, old_price: int) -> float:
 		"""
@@ -167,84 +161,6 @@ class Processor:
 
 		return RSI
 		
-
-	async def process_market(self, session: aiohttp.ClientSession, market_info: dict) -> list:
-		"""
-		Asynchronously processes market_info from any market following protocol.
-		Generates outputs for significant RSIs/price changes.
-		 
-		market_info = {
-			"exchange": str,
-			"market_name": str,
-			"old_price": double,
-	 		"new_price": double,
-			"1h": double,
-			"24h": double,
-		}
-
-		Args:
-			session: The aiohttp ClientSession to be used to GET data from exchange
-			market_info: Market info, follows format {
-				"exchange": str,
-				"market_name": str,
-				"old_price": double,
-		 		"new_price": double,
-				"1h": double,
-				"24h": double,
-			}
-
-		Returns:
-			List of all outputs from signifcant price changes / RSIs
-
-		"""
-		exchange = market_info["exchange"]
-		name = market_info["market_name"]
-		old_price = market_info["old_price"]
-		new_price = market_info["new_price"]
-
-		# self._logger.debug("Processing {0}".format(name))
-
-		change = self._percent_change(new_price, old_price)
-		self._logger.debug("{0} Change {1} old_price {2} new_price {3}".
-			format(name, change, old_price, new_price)
-			)
-
-		outs = {"RSI": [], "Price Updates": []}
-
-		# Calculating RSI only works for bittrex rn
-		if exchange == "Bittrex":
-			rsi = await self._calc_rsi(session, name)
-			self._logger.debug("RSI {0}".format(rsi))
-			if rsi >= self._over_bought or rsi <= self._over_sold:
-
-				# make sure that rsi hasn't been significant yet
-				if name not in self._significant_markets:
-					self._logger.debug("Not significant yet, creating output")
-
-					outs["RSI"].append(
-							"[{0}] RSI: [{1}]".format(name, rsi)
-						)
-
-					self._significant_markets.add(name)
-
-			elif name in self._significant_markets:
-				self._logger.debug(
-					"Previously significant, no longer significant, removing."
-					)
-				self._significant_markets.remove(name)
-
-
-		if change >= self._mooning or change <= self._free_fall:
-			self._logger.debug("Change significant, creating output")
-
-			prefix = "-" if change < 0 else prefix = "+" 
-
-			outs["Price Updates"].append(
-				"{0} {1} changed by {2}%  on {3}".format(prefix, name, str(change), exchange)
-				)
-
-		self._logger.debug("Outputs: {0}".format(outs))
-		return outs
 
 
 	async def _check_binance_markets(self, session: aiohttp.ClientSession) -> tuple:
@@ -354,7 +270,38 @@ class Processor:
 		return (outputs, price_updates)
 
 
-	async def _process_market(self, session: aiohttp.ClientSession, market_info: dict) -> list:
+	async def _process_rsi(self, rsi: int) -> None:
+		"""
+		Processes rsi.
+
+		Args:
+			rsi: rsi data to be processed
+
+		Returns:
+			None
+		"""
+
+		self._logger.debug("RSI {0}".format(rsi))
+		if rsi >= self._over_bought or rsi <= self._over_sold:
+
+			# make sure that rsi hasn't been significant yet
+			if name not in self._significant_markets:
+				self._logger.debug("Not significant yet, creating output")
+
+				outs["RSI"].append(
+						"[{0}] RSI: [{1}]".format(name, rsi)
+					)
+
+				self._significant_markets.add(name)
+
+		elif name in self._significant_markets:
+			self._logger.debug(
+				"Previously significant, no longer significant, removing."
+				)
+			self._significant_markets.remove(name)
+
+
+	async def process_market(self, session: aiohttp.ClientSession, market_info: dict) -> list:
 		"""
 		Asynchronously processes market_info from any market following protocol.
 		Generates outputs for significant RSIs/price changes.

@@ -1,8 +1,8 @@
 
 import asyncio
+import discord
 
-
-def get_output(self, *items: list) -> str:
+def get_output(*items: list) -> str:
 		"""
 		Creates a discord.Embed friendly formatting and returns it.
 
@@ -17,7 +17,7 @@ def get_output(self, *items: list) -> str:
 		return " ".join(*items)
 
 
-def _create_embed(self, title: str, text: str, highlighting: bool = True, 
+def create_embed(title: str, text: str, highlighting: bool = True, 
 	discord_mark_up: str ='ini', color: int = None) -> discord.Embed: 
 	"""
 	Generates a pretty embed for discord consisting of two groups,
@@ -49,3 +49,5 @@ def _create_embed(self, title: str, text: str, highlighting: bool = True,
 	embed.add_field(name="\u200b", value=text)
 
 	return embed
+
+def generate_update_outputs():
