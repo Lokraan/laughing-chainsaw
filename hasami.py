@@ -90,7 +90,7 @@ class Bot:
 
 		key, val = outputs
 
-		if len(val) > 0:
+		if val:
 			embed = discord.Embed(
 				title=key, type="rich", 
 				timestamp=datetime.datetime.now(),
@@ -254,6 +254,9 @@ class Bot:
 		# sort first interval prices
 		losses = []
 		gains = []
+
+		if len(closing_prices) == 0:
+			return 50
 
 		for i in range(1, interval):
 			change = closing_prices[i] - closing_prices[i-1]
@@ -511,6 +514,20 @@ class Bot:
 			binance_markets[i]["price"] = price
 
 
+	async def _send_embed(self, embed: discord.Embed, depth: int = 1, max_depth: int = 3):
+		if depth == max_depth:
+			self._logger.error("failed to send embed after %s tries" % depth)
+
+		try:
+			await self._client.send_message(
+				destination=discord.Object(id=self._update_channel), embed=embed
+				)
+		except discord.errors.HTTPException:
+			print(embed, embed.fields, embed.title)
+			self._logger.warning("Failed to send embed try %s" % depth)
+			await self._send_embed(embed=embed, depth=depth+1)
+
+
 	async def check_markets(self, message: discord.Message) -> None:
 		"""
 		Begins checking markets, notifies user who called for it of that it's starting.
@@ -561,9 +578,7 @@ class Bot:
 					embed = self._create_embed((key, outputs[key]))
 
 					if embed:
-						await self._client.send_message(
-							destination=discord.Object(id=self._update_channel), embed=embed
-							)
+						await self._send_embed(embed=embed)
 
 				self._logger.debug("Async sleeping {0}".format(str(self._interval * 60)))
 				await asyncio.sleep(int(self._interval*60))
