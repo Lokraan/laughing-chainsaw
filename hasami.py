@@ -694,7 +694,7 @@ if __name__ == '__main__':
 				 prints the significant changes.\n")
 
 		elif content.startswith("%sstart" % prefix):
-			await bot.start_checking_markets(message)
+			await bot.check_markets(message)
 
 		elif content.startswith("%sstop" % prefix):
 			await bot.stop_checking_markets(message)
