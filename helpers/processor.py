@@ -1,6 +1,8 @@
 
+import output_generator as og
 import market_grabber
-
+import aiohttp
+import asyncio
 
 class Processor:
 	def __init__(self, logger, config):
@@ -13,11 +15,13 @@ class Processor:
 		self._over_sold = config["over_sold"]
 		self._mooning = config["mooning"]
 
-		self._markets = {}
 		self._significant_markets = set()
+		self._markets = {}
+
+		self.mi = market_grabber.MarketInterface(self._logger)
 
 
-	async def _load_markets(self, session: aiohttp.ClientSession) -> None:
+	async def load_markets(self, session: aiohttp.ClientSession) -> None:
 		"""
 		Asynchronously loads the markets from bittrex and binance markets.
 		This loaded data is used to check percent change.
@@ -29,8 +33,8 @@ class Processor:
 			None
 		
 		"""
-		self._markets["Binance"] = await self._get_binance_markets(session)
-		self._markets["Bittrex"] = await self._get_bittrex_markets(session)
+		self._markets["Binance"] = await self.mi.get_binance_markets(session)
+		self._markets["Bittrex"] = await self.mi.get_bittrex_markets(session)
 
 
 	def _update_prices(self, price_updates: dict) -> None:
@@ -92,7 +96,7 @@ class Processor:
 		return round(((new_price - old_price) / old_price) * 100, 2)
 
 
-	async def calc_rsi(self, session: aiohttp.ClientSession, market: str) -> int:
+	async def _calc_rsi(self, session: aiohttp.ClientSession, market: str) -> int:
 		"""
 		Calculates & Returns the RSI of market according to the RSI formula
 		
@@ -119,7 +123,7 @@ class Processor:
 		"""
 
 		interval = self._rsi_time_frame
-		history = await self._get_market_history(
+		history = await self.mi.get_market_history(
 			session, market, self._rsi_tick_interval
 			)
 
@@ -133,7 +137,9 @@ class Processor:
 		if len(closing_prices) == 0:
 			return 50
 
-		for i in range(1, interval):
+		max_len = interval if interval < len(closing_prices) else len(closing_prices)
+
+		for i in range(1, max_len):
 			change = closing_prices[i] - closing_prices[i-1]
 			if change < 0:
 				losses.append(abs(change))
@@ -163,7 +169,7 @@ class Processor:
 		
 
 
-	async def _check_binance_markets(self, session: aiohttp.ClientSession) -> tuple:
+	async def check_binance_markets(self, session: aiohttp.ClientSession) -> tuple:
 		"""
 		Checks binance markets for significant price/rsi updates.
 
@@ -177,7 +183,10 @@ class Processor:
 		outputs = {"RSI": [], "Price Updates": []}
 		price_updates = {}
 
-		new_markets = await self._get_binance_markets(session)
+		new_markets = await self.mi.get_binance_markets(session)
+
+		if not new_markets:
+			return(outputs, price_updates)
 
 		old_markets = self._markets["Binance"]
 
@@ -206,14 +215,14 @@ class Processor:
 				for key, val in out.items(): outputs[key].extend(val)
 
 				# make sure price updates
-				change = self._percent_change(new_price, old_price)
+				change = self.percent_change(new_price, old_price)
 				if change >= self._mooning or change <= self._free_fall:
 					price_updates[i] = new_price
 
 		return (outputs, price_updates)
 
 
-	async def _check_bittrex_markets(self, session: aiohttp.ClientSession) -> tuple:
+	async def check_bittrex_markets(self, session: aiohttp.ClientSession) -> tuple:
 		"""
 		Checks bittrex markets for significant price/rsi updates.
 
@@ -229,7 +238,10 @@ class Processor:
 		outputs = {"RSI": [], "Price Updates": []}
 		price_updates = {}
 
-		new_markets = await self._get_bittrex_markets(session)
+		new_markets = await self.mi.get_bittrex_markets(session)
+
+		if not new_markets:
+			return(outputs, price_updates)
 
 		old_markets = self._markets["Bittrex"]
 
@@ -263,7 +275,7 @@ class Processor:
 				for key, val in out.items(): outputs[key].extend(val)
 
 				# make sure price updates
-				change = self._percent_change(new_price, old_price)
+				change = self.percent_change(new_price, old_price)
 				if change >= self._mooning or change <= self._free_fall:
 					price_updates[i] = new_price
 
@@ -301,7 +313,7 @@ class Processor:
 			self._significant_markets.remove(name)
 
 
-	async def process_market(self, session: aiohttp.ClientSession, market_info: dict) -> list:
+	async def _process_market(self, session: aiohttp.ClientSession, market_info: dict) -> list:
 		"""
 		Asynchronously processes market_info from any market following protocol.
 		Generates outputs for significant RSIs/price changes.
@@ -337,7 +349,7 @@ class Processor:
 
 		# self._logger.debug("Processing {0}".format(name))
 
-		change = self._percent_change(new_price, old_price)
+		change = self.percent_change(new_price, old_price)
 		self._logger.debug("{0} Change {1} old_price {2} new_price {3}".
 			format(name, change, old_price, new_price)
 			)
@@ -345,6 +357,7 @@ class Processor:
 		outs = {"RSI": [], "Price Updates": []}
 
 		# Calculating RSI only works for bittrex rn
+
 		if exchange == "Bittrex":
 			rsi = await self._calc_rsi(session, name)
 			self._logger.debug("RSI {0}".format(rsi))
@@ -370,7 +383,10 @@ class Processor:
 		if change >= self._mooning or change <= self._free_fall:
 			self._logger.debug("Change significant, creating output")
 
-			prefix = "-" if change < 0 else prefix = "+" 
+			prefix = "-"
+			if change > 0: 
+				prefix = "+"
+
 
 			outs["Price Updates"].append(
 				"{0} {1} changed by {2}%  on {3}".format(prefix, name, str(change), exchange)

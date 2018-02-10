@@ -1,6 +1,8 @@
 
+import datetime
 import asyncio
 import discord
+import random
 
 def get_output(*items: list) -> str:
 		"""
@@ -17,7 +19,7 @@ def get_output(*items: list) -> str:
 		return " ".join(*items)
 
 
-def create_embed(title: str, text: str, highlighting: bool = True, 
+def create_embed(title: str, text: str, highlight: bool = True, 
 	discord_mark_up: str ='ini', color: int = None) -> discord.Embed: 
 	"""
 	Generates a pretty embed for discord consisting of two groups,
@@ -34,7 +36,7 @@ def create_embed(title: str, text: str, highlighting: bool = True,
 	r = lambda: random.randint(0, 255)
 	color = (r(), r(), r())
 
-	if not val: 
+	if not text:
 		return None
 
 	embed = discord.Embed(
@@ -43,11 +45,11 @@ def create_embed(title: str, text: str, highlighting: bool = True,
 		colour=discord.Colour(color)
 		)
 
-	if highlighting:
-		text = "```{1}{2}```".format(discord_mark_up, text) 
+	if highlight:
+		text = "```{0}\n{1}\n```".format(discord_mark_up, text) 
+		print(text, len(list(text)))
 
-	embed.add_field(name="\u200b", value=text)
+	#\u200b
+	embed.add_field(name="\u200b", value=text, inine=False)
 
 	return embed
-
-def generate_update_outputs():

@@ -67,7 +67,7 @@ class MarketInterface:
 
 		"""
 		url = "https://bittrex.com/api/v1.1/public/getmarketsummaries"
-		return await query_exchange(session, url)
+		return await self._query_exchange(session, url)
 
 
 	async def get_market_history(self, session:aiohttp.ClientSession, market: str,

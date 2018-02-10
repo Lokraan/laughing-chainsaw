@@ -16,7 +16,6 @@ sys.path.append("helpers/")
 
 import output_generator as og
 import processor as processor
-import calculator as c
 
 
 CONFIG_FILE = "config.json"
@@ -83,7 +82,7 @@ class Bot:
 		async with aiohttp.ClientSession() as session:
 
 			# load markets
-			await self._load_markets(session)
+			await self.mp.load_markets(session)
 
 			# loop through at least once
 			while self._updating:
@@ -91,11 +90,11 @@ class Bot:
 
 				self._logger.info("Checking markets")
 
-				outputs, price_updates["Bittrex"] = await self._check_bittrex_markets(
+				outputs, price_updates["Bittrex"] = await self.mp.check_bittrex_markets(
 					session
 					)
 
-				outputs2, price_updates["Binance"] = await self._check_binance_markets(
+				outputs2, price_updates["Binance"] = await self.mp.check_binance_markets(
 					session
 					)
 
@@ -106,10 +105,11 @@ class Bot:
 
 					highlight = "ini" if key == "RSI" else "diff" 
 
-					embed = self._create_embed(title=key, text="\n".join(outputs[key]), highlight=highlight)
+					embed = og.create_embed(title=key, text="\n".join(outputs[key]), highlight=highlight)
 
 					if embed:
-						await self._send_embed(embed=embed)
+						await self._client.send_message(
+							destination=discord.Object(self._update_channel), embed=embed)
 
 				self._logger.debug("Async sleeping {0}".format(str(self._interval * 60)))
 				await asyncio.sleep(int(self._interval*60))
