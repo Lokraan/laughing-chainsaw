@@ -81,9 +81,9 @@ def create_cmc_embed(info: dict) -> discord.Embed:
 	changes = [info["percent_change_1h"], 
 		info["percent_change_24h"], info["percent_change_7d"]]
 
-	sufixes = [" 1 hour", " 24 hour", " 1 week"]
-	changes = [(v + "% -" + sufixes[i]) if float(v) < 0 else 
-			("+"+v +  "% -" + sufixes[i])
+	suffixes = [" 1 hour", " 24 hour", " 1 week"]
+	changes = ["{0: <8} - {1}".format(v + "%", suffixes[i]) if float(v) < 0 else 
+			"{0: <8}  - {1}".format("+" + v + "%", suffixes[i])
 			for i, v in enumerate(changes)]
 
 

@@ -256,7 +256,8 @@ if __name__ == '__main__':
 		elif content.startswith("%sexit" % prefix):
 			await bot.exit(message)
 
-		elif content.startswith("%sprice" % prefix):
+		elif content.startswith("%sprice" % prefix) or\
+				content.startswith("price") or content.startswith("p"):
 			await bot.price(message, content.split(' ')[1:]) 
 
 	# start
