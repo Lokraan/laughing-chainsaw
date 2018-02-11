@@ -395,3 +395,27 @@ class Processor:
 
 		self._logger.debug("Outputs: {0}".format(outs))
 		return outs
+
+
+	async def find_cmc_ticker(self, ticker) -> str:
+
+		tickers = await self.mi.get_tickers()
+
+		ticker = ticker.lower()
+
+		for t in tickers:
+			if t["symbol"].lower() == ticker or \
+				t["id"].lower() == ticker or \
+				t["name"] == ticker:
+
+				return t["id"]
+
+		for t in tickers:
+			if t["name"].lower().startswith(ticker):
+				return t["id"]
+
+		for t in tickers:
+			if t["name"].lower().find(ticker) > 0:
+				return t["id"]
+
+		return None

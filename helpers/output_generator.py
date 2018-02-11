@@ -71,7 +71,7 @@ def create_cmc_embed(info: dict) -> discord.Embed:
 
 
 	embed = discord.Embed(
-		title=n + " Rank: " + info["rank"],
+		title=n,
 		colour=color, timestamp=datetime.datetime.now()
 		)
 
@@ -82,17 +82,18 @@ def create_cmc_embed(info: dict) -> discord.Embed:
 		info["percent_change_24h"], info["percent_change_7d"]]
 
 	sufixes = [" 1 hour", " 24 hour", " 1 week"]
-	changes = [(v + sufixes[i]) if float(v) < 0 else ("+"+v + sufixes[i])
+	changes = [(v + "% -" + sufixes[i]) if float(v) < 0 else 
+			("+"+v +  "% -" + sufixes[i])
 			for i, v in enumerate(changes)]
 
 
 	embed.set_thumbnail(url=img_url)
 	embed.add_field(name="Price", value=text, inline=True)
 
-	embed.add_field(name="Market Cap", value=locale.currency(
+	embed.add_field(name="Market Cap - Rank " + info["rank"], value=locale.currency(
 		float(info["market_cap_usd"]), grouping=True), inline=True)
 
-	embed.add_field(name="Change", 
-		value="```diff\n{}```".format('\n'.join(changes)), inline=False)
+	embed.add_field(name="\u200b", 
+		value="```diff\nChange\n\n{}```".format('\n'.join(changes)), inline=False)
 
 	return embed

@@ -143,10 +143,14 @@ class Bot:
 		self._updating = False
 
 
+
 	async def price(self, message: discord.Message, markets: list) -> None:
 		for market in markets:
-			if not market: # incorrect id
-				continue 
+			
+			market = await self.mp.find_cmc_ticker(market)
+
+			if not market:
+				continue
 
 			info = await self.mi.cmc_query(market)
 			await self._client.send_message(
