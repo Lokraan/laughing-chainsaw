@@ -109,7 +109,7 @@ class MarketInterface:
 
 
 	async def get_tickers(self) -> list:
-		url = "https://api.coinmarketcap.com/v1/ticker/"
+		url = "https://api.coinmarketcap.com/v1/ticker/?limit=0"
 
 		async with aiohttp.ClientSession() as sess:
 			return await self._query_exchange(sess, url)
