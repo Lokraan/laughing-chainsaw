@@ -16,6 +16,7 @@ For basic personal use you need to set `"token"` to your personal bot's token, a
 | `$stop` | Stops checking the markets for price/rsi updates | 
 | `$exit` | Shuts down the bot. |
 | `$greet` | Greets whoever wants to be greeted. |
+| `$price` | Gets market data for currency specified after, ie $price eth |
 
 ### Requirements
 - Python >= 3.5.3
