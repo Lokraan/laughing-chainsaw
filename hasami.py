@@ -16,6 +16,7 @@ sys.path.append("helpers/")
 
 import output_generator as og
 import processor as processor
+import market_grabber
 
 
 CONFIG_FILE = "config.json"
@@ -52,7 +53,10 @@ class Bot:
 		self._update_channel = config["update_channel"]
 
 
-		self.mp = processor.Processor(self._logger, config)
+		self.mi = market_grabber.MarketInterface(self._logger)
+		self.mp = processor.Processor(self._logger, config, self.mi)
+
+		self._cmc_pairs = []
 
 
 	async def check_markets(self, message: discord.Message) -> None:
@@ -103,9 +107,12 @@ class Bot:
 					outputs[key].extend(val)
 					self._logger.debug("Outputs: {0}".format(outputs))
 
-					highlight = "ini" if key == "RSI" else "diff" 
+					highlight =  "diff" 
+					if key == "RSI":
+						highlight = "ini"
 
-					embed = og.create_embed(title=key, text="\n".join(outputs[key]), highlight=highlight)
+					embed = og.create_embed(title=key, text="\n".join(outputs[key]), 
+						highlight=True, discord_mark_up=highlight)
 
 					if embed:
 						await self._client.send_message(
@@ -114,7 +121,7 @@ class Bot:
 				self._logger.debug("Async sleeping {0}".format(str(self._interval * 60)))
 				await asyncio.sleep(int(self._interval*60))
 
-				self._update_prices(price_updates)
+				self.mp.update_prices(price_updates)
 
 
 	async def stop_checking_markets(self, message: discord.Message) -> None:
@@ -136,6 +143,16 @@ class Bot:
 		self._updating = False
 
 
+	async def price(self, message: discord.Message, markets: list) -> None:
+		for market in markets:
+			if not market: # incorrect id
+				continue 
+
+			info = await self.mi.cmc_query(market)
+			await self._client.send_message(
+				message.channel, embed=og.create_cmc_embed(info[0]))
+
+
 	async def greet(self, message: discord.Message) -> None:
 		"""
 		Greets whoever wants to be greeted !
@@ -151,6 +168,7 @@ class Bot:
 		await self._client.send_message(
 			message.channel, "Hello {0.author.mention} !".format(message)
 			)
+
 
 	async def exit(self, message: discord.Message) -> None:
 		"""
@@ -233,6 +251,9 @@ if __name__ == '__main__':
 
 		elif content.startswith("%sexit" % prefix):
 			await bot.exit(message)
+
+		elif content.startswith("%sprice" % prefix):
+			await bot.price(message, content.split(' ')[1:]) 
 
 	# start
 	token = config["token"]

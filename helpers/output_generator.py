@@ -3,6 +3,8 @@ import datetime
 import asyncio
 import discord
 import random
+import locale
+
 
 def get_output(*items: list) -> str:
 		"""
@@ -34,7 +36,9 @@ def create_embed(title: str, text: str, highlight: bool = True,
 	"""
 
 	r = lambda: random.randint(0, 255)
-	color = (r(), r(), r())
+	if not color:
+		color = (r(), r(), r())
+		color = (int("0x%02x%02x%02x" % color, 16))
 
 	if not text:
 		return None
@@ -45,11 +49,50 @@ def create_embed(title: str, text: str, highlight: bool = True,
 		colour=discord.Colour(color)
 		)
 
+
 	if highlight:
 		text = "```{0}\n{1}\n```".format(discord_mark_up, text) 
-		print(text, len(list(text)))
 
 	#\u200b
-	embed.add_field(name="\u200b", value=text, inine=False)
+	embed.add_field(name="\u200b", value=text, inline=False)
+
+	return embed
+
+
+def create_cmc_embed(info: dict) -> discord.Embed:
+
+	locale.setlocale( locale.LC_ALL, 'English_United States.1252' )
+
+	n = info["name"]
+
+	color = 0x21ff3b if float(info["percent_change_24h"]) >= 0 else 0xff0000
+	img_url = "https://files.coinmarketcap.com/static/img/coins/32x32/{}.png".format(
+		info["id"])
+
+
+	embed = discord.Embed(
+		title=n + " Rank: " + info["rank"],
+		colour=color, timestamp=datetime.datetime.now()
+		)
+
+	text = locale.currency(float(info["price_usd"]), grouping=True)\
+		+ " / " + info["price_btc"] + " btc"
+
+	changes = [info["percent_change_1h"], 
+		info["percent_change_24h"], info["percent_change_7d"]]
+
+	sufixes = [" 1 hour", " 24 hour", " 1 week"]
+	changes = [(v + sufixes[i]) if float(v) < 0 else ("+"+v + sufixes[i])
+			for i, v in enumerate(changes)]
+
+
+	embed.set_thumbnail(url=img_url)
+	embed.add_field(name="Price", value=text, inline=True)
+
+	embed.add_field(name="Market Cap", value=locale.currency(
+		float(info["market_cap_usd"]), grouping=True), inline=True)
+
+	embed.add_field(name="Change", 
+		value="```diff\n{}```".format('\n'.join(changes)), inline=False)
 
 	return embed

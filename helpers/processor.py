@@ -1,11 +1,13 @@
 
 import output_generator as og
 import market_grabber
+import datetime
 import aiohttp
 import asyncio
 
+
 class Processor:
-	def __init__(self, logger, config):
+	def __init__(self, logger, config, mi):
 		self._logger = logger
 
 		self._rsi_tick_interval = config["rsi_tick_interval"]
@@ -18,7 +20,7 @@ class Processor:
 		self._significant_markets = set()
 		self._markets = {}
 
-		self.mi = market_grabber.MarketInterface(self._logger)
+		self.mi = mi
 
 
 	async def load_markets(self, session: aiohttp.ClientSession) -> None:
@@ -37,7 +39,7 @@ class Processor:
 		self._markets["Bittrex"] = await self.mi.get_bittrex_markets(session)
 
 
-	def _update_prices(self, price_updates: dict) -> None:
+	def update_prices(self, price_updates: dict) -> None:
 		"""
 		Updates prices in market dictionary. This is used to prevent
 		price update spam. Only updates price if it was significant.
@@ -167,7 +169,6 @@ class Processor:
 
 		return RSI
 		
-
 
 	async def check_binance_markets(self, session: aiohttp.ClientSession) -> tuple:
 		"""

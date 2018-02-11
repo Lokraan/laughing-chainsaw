@@ -90,7 +90,7 @@ class MarketInterface:
 		return await self._query_exchange(session, url)
 
 
-	async def _cmc_query(market: str) -> dict:
+	async def cmc_query(self, market: str) -> dict:
 		"""
 		Gets current market information.
 
@@ -104,10 +104,5 @@ class MarketInterface:
 
 		url = "https://api.coinmarketcap.com/v1/ticker/{}/".format(market)
 
-		async with asyncio.ClientSession() as sess:
+		async with aiohttp.ClientSession() as sess:
 			return await self._query_exchange(sess, url)
-
-
-	async def get_cmc_price(market: str) -> int:
-		pass
-
