@@ -64,14 +64,14 @@ def create_cmc_embed(info: dict) -> discord.Embed:
 	locale.setlocale( locale.LC_ALL, 'English_United States.1252' )
 
 	n = info["name"]
+	n2 = info["id"]
 
 	color = 0x21ff3b if float(info["percent_change_24h"]) >= 0 else 0xff0000
-	img_url = "https://files.coinmarketcap.com/static/img/coins/32x32/{}.png".format(
-		info["id"])
+	img_url = "https://files.coinmarketcap.com/static/img/coins/32x32/{}.png".format(n2)
 
 
 	embed = discord.Embed(
-		title=n,
+		title=n, url="https://coinmarketcap.com/currencies/{}/".format(n2),
 		colour=color, timestamp=datetime.datetime.now()
 		)
 

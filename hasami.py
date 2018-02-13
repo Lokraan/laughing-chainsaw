@@ -7,12 +7,12 @@ import random
 import yaml
 import json
 import sys
+import re
 
 import discord
 import aiohttp
 
 sys.path.append("helpers/")
-
 
 import output_generator as og
 import processor as processor
@@ -146,7 +146,10 @@ class Bot:
 
 	async def price(self, message: discord.Message, markets: list) -> None:
 		for market in markets:
-			
+
+			if market == "":
+				continue
+
 			market = await self.mp.find_cmc_ticker(market)
 
 			if not market:
@@ -240,24 +243,31 @@ if __name__ == '__main__':
 
 		# Default greet
 		if content.startswith("%sgreet" % prefix):
+			logger.info("Greeted")
 			await bot.greet(message)
 
 		elif content.startswith("%shelp" % prefix):
+			logger.info("Helped")
 			await client.send_message(
 				message.channel, "```Starts checking bittrex and binance markets and\
 				 prints the significant changes.\n")
 
 		elif content.startswith("%sstart" % prefix):
+			logger.info("Checking markets")
 			await bot.check_markets(message)
 
 		elif content.startswith("%sstop" % prefix):
+			logger.info("Not checking amrkets")
 			await bot.stop_checking_markets(message)
 
 		elif content.startswith("%sexit" % prefix):
+			logger.info("Exiting")
 			await bot.exit(message)
 
-		elif content.startswith("%sprice" % prefix):
-			await bot.price(message, content.split(' ')[1:]) 
+		elif content.startswith("%sprice" % prefix) or content.startswith("%sp" % prefix):
+			markets = re.split("\s|,", content)[1:]
+			logger.info("Price for markets {}".format(markets))
+			await bot.price(message, markets) 
 
 	# start
 	token = config["token"]
