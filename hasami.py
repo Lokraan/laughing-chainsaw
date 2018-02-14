@@ -155,9 +155,17 @@ class Bot:
 			if not market:
 				continue
 
-			info = await self.mi.cmc_query(market)
+			info = await self.mi.cmc_market_query(market)
 			await self._client.send_message(
-				message.channel, embed=og.create_cmc_embed(info[0]))
+				message.channel, embed=og.create_cmc_price_embed(info[0]))
+
+
+	async def crypto_cap(self, message: discord.Message) -> None:
+
+		info = self.mi.get_crypto_mcap()
+
+		await self._client.send_message(
+			message.channel, embed=og.create_cmc_cap_embed(info))
 
 
 	async def greet(self, message: discord.Message) -> None:
@@ -268,6 +276,9 @@ if __name__ == '__main__':
 			markets = re.split("\s|,", content)[1:]
 			logger.info("Price for markets {}".format(markets))
 			await bot.price(message, markets) 
+
+		elif content.startswith("%scap" % prefix):
+			await bot.crypto_cap(message)
 
 	# start
 	token = config["token"]

@@ -21,6 +21,13 @@ def get_output(*items: list) -> str:
 		return " ".join(*items)
 
 
+def get_color():
+	color = (r(), r(), r())
+	color = (int("0x%02x%02x%02x" % color, 16))
+
+	return color
+
+
 def create_embed(title: str, text: str, highlight: bool = True, 
 	discord_mark_up: str ='ini', color: int = None) -> discord.Embed: 
 	"""
@@ -37,8 +44,7 @@ def create_embed(title: str, text: str, highlight: bool = True,
 
 	r = lambda: random.randint(0, 255)
 	if not color:
-		color = (r(), r(), r())
-		color = (int("0x%02x%02x%02x" % color, 16))
+		color = get_color()
 
 	if not text:
 		return None
@@ -59,9 +65,9 @@ def create_embed(title: str, text: str, highlight: bool = True,
 	return embed
 
 
-def create_cmc_embed(info: dict) -> discord.Embed:
+def create_cmc_price_embed(info: dict) -> discord.Embed:
 
-	locale.setlocale( locale.LC_ALL, 'English_United States.1252' )
+	locale.setlocale(locale.LC_ALL, "")
 
 	n = info["name"]
 	n2 = info["id"]
@@ -99,5 +105,32 @@ def create_cmc_embed(info: dict) -> discord.Embed:
 
 	embed.add_field(name="\u200b", 
 		value="```diff\nChange\n\n{}```".format('\n'.join(changes)), inline=False)
+
+	return embed
+
+
+def create_cmc_cap_embed(info: dict) -> discord.Embed:
+	locale.setlocale(locale.LC_ALL, "")
+
+	embed = discord.Embed(
+		title="Crypto Market Cap", url="https://coinmarketcap.com/charts/".format(n2),
+		colour=og.get_color(), timestamp=datetime.datetime.now()
+		)
+
+	embed.set_thumbnail(
+		"https://files.coinmarketcap.com/static/img/coins/32x32/tether.png"
+		)
+
+	mc = locale.currency(float(info["total_market_cap_usd"]))
+	embed.add_field(name="Total USD", value=mc, inline=True)
+
+	mc = locale.currency(float(info["total_24h_volume_usd"]))
+	embed.add_field(name="24h Volume USD", value=mc, inline=True)
+
+	mc = info["bitcoin_percentage_of_market_cap"]
+	embed.add_field(name="Bitcoin Dominance", value=mc, inline=True)
+
+	mc = info["active_currencies"]
+	embed.add_field(name="Active Currencies", value=mc, inline=True)
 
 	return embed
