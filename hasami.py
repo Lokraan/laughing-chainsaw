@@ -162,7 +162,7 @@ class Bot:
 
 	async def crypto_cap(self, message: discord.Message) -> None:
 
-		info = self.mi.get_crypto_mcap()
+		info = await self.mi.get_crypto_mcap()
 
 		await self._client.send_message(
 			message.channel, embed=og.create_cmc_cap_embed(info))

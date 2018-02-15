@@ -22,10 +22,12 @@ def get_output(*items: list) -> str:
 
 
 def get_color():
-	color = (r(), r(), r())
-	color = (int("0x%02x%02x%02x" % color, 16))
-
-	return color
+        r = lambda: random.randint(0, 255)
+        
+        color = (r(), r(), r())
+        color = (int("0x%02x%02x%02x" % color, 16))
+        
+        return color
 
 
 def create_embed(title: str, text: str, highlight: bool = True, 
@@ -42,7 +44,6 @@ def create_embed(title: str, text: str, highlight: bool = True,
 
 	"""
 
-	r = lambda: random.randint(0, 255)
 	if not color:
 		color = get_color()
 
@@ -74,7 +75,6 @@ def create_cmc_price_embed(info: dict) -> discord.Embed:
 
 	color = 0x21ff3b if float(info["percent_change_24h"]) >= 0 else 0xff0000
 	img_url = "https://files.coinmarketcap.com/static/img/coins/32x32/{}.png".format(n2)
-
 
 	embed = discord.Embed(
 		title=n, url="https://coinmarketcap.com/currencies/{}/".format(n2),
@@ -110,27 +110,29 @@ def create_cmc_price_embed(info: dict) -> discord.Embed:
 
 
 def create_cmc_cap_embed(info: dict) -> discord.Embed:
-	locale.setlocale(locale.LC_ALL, "")
+        locale.setlocale(locale.LC_ALL, "")
 
-	embed = discord.Embed(
-		title="Crypto Market Cap", url="https://coinmarketcap.com/charts/".format(n2),
-		colour=og.get_color(), timestamp=datetime.datetime.now()
-		)
+        embed = discord.Embed(
+                title="Crypto Market Cap", url="https://coinmarketcap.com/charts/",
+                colour=0xc43aff, timestamp=datetime.datetime.now()
+                )
 
-	embed.set_thumbnail(
-		"https://files.coinmarketcap.com/static/img/coins/32x32/tether.png"
-		)
+        embed.set_thumbnail(
+                url="https://files.coinmarketcap.com/static/img/coins/32x32/tether.png"
+                )
 
-	mc = locale.currency(float(info["total_market_cap_usd"]))
-	embed.add_field(name="Total USD", value=mc, inline=True)
+        mc = locale.currency(float(info["total_market_cap_usd"]), grouping=True)
+        embed.add_field(name="Total USD", value=mc, inline=True)
 
-	mc = locale.currency(float(info["total_24h_volume_usd"]))
-	embed.add_field(name="24h Volume USD", value=mc, inline=True)
+        mc = locale.currency(float(info["total_24h_volume_usd"]), grouping=True)
+        embed.add_field(name="24h Volume USD", value=mc+"\n\u200b", inline=True)
+        
+#        embed.add_field(name="\u200b", value="-", inline=False)
+        
+        mc = "{}%".format(info["bitcoin_percentage_of_market_cap"])
+        embed.add_field(name="Bitcoin Dominance", value=mc, inline=True)
 
-	mc = info["bitcoin_percentage_of_market_cap"]
-	embed.add_field(name="Bitcoin Dominance", value=mc, inline=True)
-
-	mc = info["active_currencies"]
-	embed.add_field(name="Active Currencies", value=mc, inline=True)
-
-	return embed
+        mc = info["active_currencies"]
+        embed.add_field(name="Active Currencies", value=mc, inline=True)
+        
+        return embed

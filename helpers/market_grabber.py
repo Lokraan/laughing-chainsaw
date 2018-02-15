@@ -112,7 +112,7 @@ class MarketInterface:
 		url = "https://api.coinmarketcap.com/v1/global/"
 
 		async with aiohttp.ClientSession() as sess:
-			return await self._query_exchange(session, url)
+			return await self._query_exchange(sess, url)
 
 
 	async def get_cmc_tickers(self) -> list:
