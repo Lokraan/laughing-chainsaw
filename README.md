@@ -1,6 +1,8 @@
 # Hasami
 Hasami is a discord bot that monitors bittrex and binance exchanges for significant changes in price / significant RSI values and prints it out in a specified channel.
 
+It also prints out the market cap of the entire crypto market and market information into nicely formatted discord embeds upon request. (Data from coinmarketcap.)
+
 ## Usage
 For basic personal use you need to set `"token"` to your personal bot's token, and `"update_channel"` to the channel the bot should print updates to in [config.json](/config.json)
 
@@ -17,6 +19,7 @@ For basic personal use you need to set `"token"` to your personal bot's token, a
 | `$exit` | Shuts down the bot. |
 | `$greet` | Greets whoever wants to be greeted. |
 | `$price` | Gets market data for currency specified after, ie $price eth |
+| `$cap` | Gets market cap for crypto markets |
 
 ### Requirements
 - Python >= 3.5.3
@@ -72,5 +75,4 @@ When a market's rsi value is greater than or equal to `over_bought` or `over_sol
 ## TODO
 1. Price display under `playing` on bot.
 2. Support for more exchanges.
-3. Move to v2.0 of bittrex api.
 
