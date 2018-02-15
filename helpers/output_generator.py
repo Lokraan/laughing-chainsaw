@@ -118,7 +118,7 @@ def create_cmc_cap_embed(info: dict) -> discord.Embed:
                 )
 
         embed.set_thumbnail(
-                url="https://files.coinmarketcap.com/static/img/coins/32x32/tether.png"
+                url="https://files.coinmarketcap.com/static/img/coins/32x32/dollar-online.png"
                 )
 
         mc = locale.currency(float(info["total_market_cap_usd"]), grouping=True)
