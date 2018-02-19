@@ -3,7 +3,13 @@ Hasami is a discord bot that monitors bittrex and binance exchanges for signific
 
 It also prints out the market cap of the entire crypto market and market information into nicely formatted discord embeds upon request. (Data from coinmarketcap.)
 
-## Usage
+## Adding the bot to your server.
+I currently host the bot 24/7 on a vps and you're free to add it to your discord server if you'd like. The price / rsi updates don't currently work for multiple servers but it is something I'll be adding soon. Despite this, all other commands are fully functional.
+
+https://discordapp.com/oauth2/authorize?client_id=392534322894340096&scope=bot
+
+
+## Personal Usage
 For basic personal use you need to set `"token"` to your personal bot's token, and `"update_channel"` to the channel the bot should print updates to in [config.json](/config.json)
 
 ```json
