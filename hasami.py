@@ -147,7 +147,7 @@ class Bot:
 							channel = discord.Object(channel)
 							try:
 								await self._client.send_message(destination=channel, embed=embed)
-							except discord.NotFound as e:
+							except discord.HTTPException as e:
 								self._logger.info(e)
 
 

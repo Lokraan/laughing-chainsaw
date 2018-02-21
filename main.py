@@ -90,6 +90,9 @@ if __name__ == '__main__':
 		elif content.startswith("%scap" % prefix):
 			await bot.crypto_cap(message)
 
+		elif content.startswith("%ssource" % prefix):
+			await client.send_message(message.channel, "https://github.com/lokraan/hasami")
+
 	# start
 	token = config["token"]
 	client.run(token)
