@@ -130,7 +130,11 @@ class Processor:
 			)
 
 		res = history["result"]
-		closing_prices = [buy["C"] for buy in res]
+		try:
+			closing_prices = [buy["C"] for buy in res]
+		except TypeError as e:
+			print(e)
+			return 50
 
 		# sort first interval prices
 		losses = []

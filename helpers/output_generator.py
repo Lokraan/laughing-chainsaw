@@ -53,7 +53,7 @@ def create_embed(title: str, text: str, highlight: bool = True,
 	embed = discord.Embed(
 		title=title, type="rich", 
 		timestamp=datetime.datetime.now(),
-		colour=discord.Colour(color)
+		colour=discord.Colour.gold()
 		)
 
 

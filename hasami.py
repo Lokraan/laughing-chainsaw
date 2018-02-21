@@ -3,6 +3,7 @@ import logging.config
 import datetime
 import logging
 import asyncio
+import locale
 import random
 import yaml
 import json
@@ -50,13 +51,34 @@ class Bot:
 		# config stuff
 
 		self._interval = config["update_interval"]
-		self._update_channel = config["update_channel"]
-
+		chan = config["update_channel"]
+		self._update_channels = set([chan])
 
 		self.mi = market_grabber.MarketInterface(self._logger)
 		self.mp = processor.Processor(self._logger, config, self.mi)
 
+		self._updating = False
 		self._cmc_pairs = []
+
+		self._client.loop.create_task(self._set_playing_status())
+
+
+	async def _set_playing_status(self):
+		locale.setlocale(locale.LC_ALL, "")
+		while True:
+			await self._client.wait_until_ready()
+
+			data = await self.mi.get_crypto_mcap()
+
+			mc = int(data["total_market_cap_usd"])
+			mc = locale.currency(mc, grouping=True)
+
+			self._logger.info("Setting market cap {0}".format(mc))
+
+			await self._client.change_presence(
+				game=discord.Game(name=mc))
+
+			await asyncio.sleep(300)
 
 
 	async def check_markets(self, message: discord.Message) -> None:
@@ -77,10 +99,18 @@ class Bot:
 		
 		"""
 
-		self._updating = True
 		await self._client.send_message(
 			message.channel , "Starting {0.author.mention} !".format(message)
 			)
+
+		self._update_channels.add(message.channel.id)
+		self._logger.info("Added {0.channel} ({0.channel.id}) to rsi update outputs"\
+			.format(message))
+
+		if self._updating:
+			return
+
+		self._updating = True
 
 		self._logger.info("Starting to check markets.")
 		async with aiohttp.ClientSession() as session:
@@ -95,17 +125,15 @@ class Bot:
 				self._logger.info("Checking markets")
 
 				outputs, price_updates["Bittrex"] = await self.mp.check_bittrex_markets(
-					session
-					)
+					session)
 
 				outputs2, price_updates["Binance"] = await self.mp.check_binance_markets(
-					session
-					)
+					session)
 
 				# send outputs
 				for key, val in outputs2.items(): 
 					outputs[key].extend(val)
-					self._logger.debug("Outputs: {0}".format(outputs))
+					self._logger.info("Outputs: {0}".format(outputs))
 
 					highlight =  "diff" 
 					if key == "RSI":
@@ -115,8 +143,9 @@ class Bot:
 						highlight=True, discord_mark_up=highlight)
 
 					if embed:
-						await self._client.send_message(
-							destination=discord.Object(self._update_channel), embed=embed)
+						for channel in self._update_channels:
+							channel = discord.Object(channel)
+							await self._client.send_message(destination=channel, embed=embed)
 
 				self._logger.debug("Async sleeping {0}".format(str(self._interval * 60)))
 				await asyncio.sleep(int(self._interval*60))
@@ -136,11 +165,18 @@ class Bot:
 			None
 
 		"""
-		self._logger.info("Stopping checking markets")
+		chan = message.channel
+
 		await self._client.send_message(
-			message.channel, "Stopping {0.author.mention} !".format(message)
-			)
-		self._updating = False
+			message.channel, "Stopping {0.author.mention} !".format(message))
+			
+		if chan.id in self._update_channels:
+			self._logger.info("Removing {0.id} from update channels".format(chan))
+			self._update_channels.remove(chan.id)
+
+		if len(self._update_channels) == 0:
+			self._logger.info("Stopping checking markets")
+			self._updating = False
 
 
 
@@ -202,84 +238,3 @@ class Bot:
 			)
 		sys.exit()
 
-
-def get_config() -> dict:
-	with open(CONFIG_FILE, "r") as f:
-		return json.load(f)
-
-
-def setup_logging(config: dict) -> None:
-	with open(LOGGING_CONFIG, "r") as f:
-		log_config = yaml.load(f)
-
-		logging.config.dictConfig(log_config)
-
-		level = logging.INFO if config["debug"] == 0 else logging.DEBUG
-		
-		console_logger = logging.getLogger("main")
-		console_logger.setLevel(level)
-
-		bot_logger = logging.getLogger("bot")
-		bot_logger.setLevel(level)
-
-		console_logger.debug("Set up logging")
-
-
-if __name__ == '__main__':
-
-	# intialize everything
-	client = discord.Client()
-
-	config = get_config()
-	setup_logging(config)
-
-	logger = logging.getLogger("main")
-	bot = Bot(client=client, logger=logging.getLogger("bot"), config=config)
-
-	prefix = config["command_prefix"]
-	
-	# client events
-	@client.event
-	async def on_ready():
-		logger.info("logged in")
-		logger.debug("logged in as {0}".format(client.user.name))
-
-
-	@client.event
-	async def on_message(message):
-		content = message.content
-
-		# Default greet
-		if content.startswith("%sgreet" % prefix):
-			logger.info("Greeted")
-			await bot.greet(message)
-
-		elif content.startswith("%shelp" % prefix):
-			logger.info("Helped")
-			await client.send_message(
-				message.channel, "```Starts checking bittrex and binance markets and\
-				 prints the significant changes.\n")
-
-		elif content.startswith("%sstart" % prefix):
-			logger.info("Checking markets")
-			await bot.check_markets(message)
-
-		elif content.startswith("%sstop" % prefix):
-			logger.info("Not checking amrkets")
-			await bot.stop_checking_markets(message)
-
-		elif content.startswith("%sexit" % prefix):
-			logger.info("Exiting")
-			await bot.exit(message)
-
-		elif content.startswith("%sprice" % prefix) or content.startswith("%sp" % prefix):
-			markets = re.split("\s|,", content)[1:]
-			logger.info("Price for markets {}".format(markets))
-			await bot.price(message, markets) 
-
-		elif content.startswith("%scap" % prefix):
-			await bot.crypto_cap(message)
-
-	# start
-	token = config["token"]
-	client.run(token)
