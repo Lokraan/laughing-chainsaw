@@ -145,7 +145,11 @@ class Bot:
 					if embed:
 						for channel in self._update_channels:
 							channel = discord.Object(channel)
-							await self._client.send_message(destination=channel, embed=embed)
+							try:
+								await self._client.send_message(destination=channel, embed=embed)
+							except discord.NotFound as e:
+								self._logger.info(e)
+
 
 				self._logger.debug("Async sleeping {0}".format(str(self._interval * 60)))
 				await asyncio.sleep(int(self._interval*60))
