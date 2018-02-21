@@ -3,14 +3,16 @@ Hasami is a discord bot that monitors bittrex and binance exchanges for signific
 
 It also prints out the market cap of the entire crypto market and market information into nicely formatted discord embeds upon request. (Data from coinmarketcap.)
 
-## Adding the bot to your server.
-I currently host the bot 24/7 on a vps and you're free to add it to your discord server if you'd like. The price / rsi updates don't currently work for multiple servers but it is something I'll be adding soon. Despite this, all other commands are fully functional.
+## Adding the bot to your server
+I currently host the bot 24/7 on a vps and you're free to add it to your discord server if you'd like. To enable price/rsi updates just type `$start` in the desired channel and it will starts sending price/rsi updates to the channel. To stop it type, `$stop`.
 
 https://discordapp.com/oauth2/authorize?client_id=392534322894340096&scope=bot
 
 
-## Personal Usage
+## Hosting it yourself.
 For basic personal use you need to set `"token"` to your personal bot's token, and `"update_channel"` to the channel the bot should print updates to in [config.json](/config.json)
+
+It is not necessary to include the update channel, as typing `$start` uses the current channel for price/rsi updates and `$stop` removes it.
 
 ```json
 "token": "your token",
@@ -20,12 +22,12 @@ For basic personal use you need to set `"token"` to your personal bot's token, a
 ### Commands
 | Command | Description |
 | --- | --- |
-| `$start` | Starts checking the markets for price/rsi updates | 
-| `$stop` | Stops checking the markets for price/rsi updates | 
+| `$start` | Starts checking the markets for price/rsi updates in the channel the message was sent. | 
+| `$stop` | Stops checking the markets for price/rsi updates in the channel the message was sent. | 
 | `$exit` | Shuts down the bot. |
 | `$greet` | Greets whoever wants to be greeted. |
-| `$price` | Gets market data for currency specified after, ie $price eth |
-| `$cap` | Gets market cap for crypto markets |
+| `$price` | Gets market data for currency specified after, ie `$price eth` |
+| `$cap` | Gets the marketcap of cryptocurrencies as a whole. |
 
 ### Requirements
 - Python >= 3.5.3
@@ -79,6 +81,5 @@ When a market's rsi value is greater than or equal to `over_bought` or `over_sol
 ```
 
 ## TODO
-1. Price display under `playing` on bot.
-2. Support for more exchanges.
+1. Support for more exchanges.
 
