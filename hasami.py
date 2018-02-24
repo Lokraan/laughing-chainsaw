@@ -19,7 +19,6 @@ import output_generator as og
 import processor as processor
 import market_grabber
 
-
 CONFIG_FILE = "config.json"
 LOGGING_CONFIG = "log_conf.yaml"
 
@@ -51,6 +50,8 @@ class Bot:
 		# config stuff
 
 		self._interval = config["update_interval"]
+		self._prefix = config["prefix"]
+
 		chan = config["update_channel"]
 		self._update_channels = set([chan])
 
@@ -78,10 +79,10 @@ class Bot:
 			await self._client.change_presence(
 				game=discord.Game(name=mc))
 
-			await asyncio.sleep(300)
+			await asyncio.sleep(900)
 
 
-	async def check_markets(self, message: discord.Message) -> None:
+	async def check_exchanges(self, message: discord.Message, exchanges: str) -> None:
 		"""
 		Begins checking markets, notifies user who called for it of that it's starting.
 
@@ -181,7 +182,6 @@ class Bot:
 		if len(self._update_channels) == 0:
 			self._logger.info("Stopping checking markets")
 			self._updating = False
-
 
 
 	async def price(self, message: discord.Message, markets: list) -> None:

@@ -1,6 +1,109 @@
 
+import logging
 import asyncio
 import aiohttp
+
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception
+import ccxt.async as ccxt
+
+
+def ExchangeInterface:
+	def __init__(self, logger):
+		self._logger = logger
+		self._retry = retry(
+			wait=wait_exponential(),
+			stop=stop_after_attempt(3),
+			retry=(
+				retry_if_exception(ccxt.DDosProtection) | 
+				retry_if_exception(ccxt.RequestTimeout))
+			)
+
+
+	def _get_exchange(self, exchange: str) -> ccxt.Exchange:
+		if exchange in ccxxt.exchanges:
+			return getarr(ccxt, exchange)
+
+		return None
+
+
+	@self._retry
+	async def _valid_symbol(self, symbol: str, exchange: ccxt.Exchange) -> bool:
+		await exchange.load_markets()
+
+		symbol = symbol.lower()
+		for symb in exchange.symbols:
+			if symb.lower() == symbol:
+				return False
+
+		return False
+
+
+	@self._retry
+	async def _valid_pair(self, base: str, quote: str, exchange: ccxt.Exchange) -> str:
+		quote = quote.lower()
+		base = base.lower()
+
+		markets = await exchange.fetch_markets()
+
+		for m in markets:
+			if m["quote"].lower() == quote:
+				if m["base"].lower() == base or m["baseId"].lower() == base:
+					return m["symbol"]
+
+		for m in markets:
+			symbol = m["symbol"]
+			if symbol.lower().startswith(base):
+				return symbol
+
+		for m in makrets:
+			symbol = m["symbol"]
+			if symbol.lower().find(base) > 0:
+				return symbol
+
+		return None
+
+
+	@self._retry
+	async def fetch_ohlcv(self, exchange: ccxt.Exchange, market: str, dist=200) -> list:
+		markets = await exchange.load_markets()
+
+		market = self._valid_symbol(market, exchange)
+
+		if not market:
+			return None
+
+		since = (datetime.now() - timedelta(minutes=dist)).timestamp()
+
+		return await exchange.fetch_ohlcv(market, "1d", since=since)
+
+
+	@self._retry
+	async def fetch_ticker(self, exchange: str, market: str) -> dict:
+		exchange = getattr(ccxt, exchange)
+
+		if not exchange:
+			return
+
+		return exchange.fetch_ticker(market)
+
+
+def _fetch_exchange(exchange: str) -> ccxt.Exchange:
+	if exchange in ccxt.exchanges:
+		return getatr(ccxt, exchange)
+
+
+def fetch_ohlcv(exchange: str = None, existing_exchange: ccxt.Exchange = None) -> dict:
+	if existing_exchange:
+		exchange = existing_exchange
+
+	else:
+		if exchange in ccxt.exchanges:
+			exchange = getattr(ccxt, exchange)
+
+
+		else:
+			return None
+
 
 class MarketInterface:
 	def __init__(self, logger):

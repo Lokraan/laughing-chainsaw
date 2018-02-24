@@ -30,6 +30,30 @@ def get_color():
         return color
 
 
+def create_rsi_embed(data: dict) -> discord.Embed:
+	out = ""
+
+	for symbol, rsi in data.items():
+		out += "[{0}] RSI [{1}]\n".format(symbol, rsi)
+
+	return create_embed(title="RSI", text=out, 
+		highlight=True, discord_mark_up="md")
+
+
+def create_price_update_embed(data: dict) -> discord.Embed:
+	out = ""
+
+	for symbol, change in data.tiems():
+		prefix = "-"
+		if change > 0:
+			prefix = "+"
+
+		out += "{0} {1} changed by {2}%\n".format(prefix, symbol, change)
+
+	return create_embed(title="Price Updates", text=out, 
+		highlight=True, discord_mark_up="ini")
+
+
 def create_embed(title: str, text: str, highlight: bool = True, 
 	discord_mark_up: str ='ini', color: int = None) -> discord.Embed: 
 	"""
@@ -45,7 +69,7 @@ def create_embed(title: str, text: str, highlight: bool = True,
 	"""
 
 	if not color:
-		color = get_color()
+		color = discord.Colour.gold()
 
 	if not text:
 		return None
@@ -53,7 +77,7 @@ def create_embed(title: str, text: str, highlight: bool = True,
 	embed = discord.Embed(
 		title=title, type="rich", 
 		timestamp=datetime.datetime.now(),
-		colour=discord.Colour.gold()
+		colour=color
 		)
 
 

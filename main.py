@@ -3,11 +3,16 @@ import logging.config
 import logging
 import json
 import yaml
+import sys
 import re
 
 import discord
 
 import hasami
+
+sys.path.append("helpers/")
+
+from command_processor import CommandProcessor
 
 CONFIG_FILE = "config.json"
 LOGGING_CONFIG = "log_conf.yaml"
@@ -46,8 +51,9 @@ if __name__ == '__main__':
 	logger = logging.getLogger("main")
 	bot = hasami.Bot(client=client, logger=logging.getLogger("bot"), config=config)
 
-	prefix = config["command_prefix"]
-	
+	prefix = config["prefix"]
+	command_processor = CommandProcessor(bot, logger, prefix)
+
 	# client events
 	@client.event
 	async def on_ready():
@@ -57,41 +63,7 @@ if __name__ == '__main__':
 
 	@client.event
 	async def on_message(message):
-		content = message.content
-
-		# Default greet
-		if content.startswith("%sgreet" % prefix):
-			logger.info("Greeted")
-			await bot.greet(message)
-
-		elif content.startswith("%shelp" % prefix):
-			logger.info("Helped")
-			await client.send_message(
-				message.channel, "```Starts checking bittrex and binance markets and\
-				 prints the significant changes.\n```")
-
-		elif content.startswith("%sstart" % prefix):
-			logger.info("Checking markets")
-			await bot.check_markets(message)
-
-		elif content.startswith("%sstop" % prefix):
-			logger.info("Not checking amrkets")
-			await bot.stop_checking_markets(message)
-
-		elif content.startswith("%sexit" % prefix):
-			logger.info("Exiting")
-			await bot.exit(message)
-
-		elif content.startswith("%sprice" % prefix) or content.startswith("%sp" % prefix):
-			markets = re.split("\s|,", content)[1:]
-			logger.info("Price for markets {}".format(markets))
-			await bot.price(message, markets) 
-
-		elif content.startswith("%scap" % prefix):
-			await bot.crypto_cap(message)
-
-		elif content.startswith("%ssource" % prefix):
-			await client.send_message(message.channel, "https://github.com/lokraan/hasami")
+		await command_processor.process_message(command)
 
 	# start
 	token = config["token"]
