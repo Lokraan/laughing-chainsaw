@@ -1,0 +1,13 @@
+{
+    "token": "MzkyNTM0MzIyODk0MzQwMDk2.DW5o9w.TnyY-JxUJh7PDi8r1skNyelc9Qw",
+    "update_channel": "keke ",
+	"free_fall": -4,
+	"mooning": 4,
+	"rsi_tick_interval": "thirtyMin",
+	"rsi_time_frame": 14, 
+	"over_bought": 75,
+	"over_sold": 25,
+	"update_interval": 1,
+	"debug": 0,
+	"prefix": "$"
+}

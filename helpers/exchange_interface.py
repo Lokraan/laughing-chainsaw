@@ -7,84 +7,84 @@ from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_excep
 import ccxt.async as ccxt
 
 
-def ExchangeInterface:
-	def __init__(self, logger):
-		self._logger = logger
-		self._retry = retry(
-			wait=wait_exponential(),
-			stop=stop_after_attempt(3),
-			retry=(
-				retry_if_exception(ccxt.DDosProtection) | 
-				retry_if_exception(ccxt.RequestTimeout))
-			)
+# def ExchangeInterface:
+# 	def __init__(self, logger):
+# 		self._logger = logger
+# 		self._retry = retry(
+# 			wait=wait_exponential(),
+# 			stop=stop_after_attempt(3),
+# 			retry=(
+# 				retry_if_exception(ccxt.DDosProtection) | 
+# 				retry_if_exception(ccxt.RequestTimeout))
+# 			)
 
 
-	def _get_exchange(self, exchange: str) -> ccxt.Exchange:
-		if exchange in ccxxt.exchanges:
-			return getarr(ccxt, exchange)
+# 	def _get_exchange(self, exchange: str) -> ccxt.Exchange:
+# 		if exchange in ccxxt.exchanges:
+# 			return getarr(ccxt, exchange)
 
-		return None
-
-
-	@self._retry
-	async def _valid_symbol(self, symbol: str, exchange: ccxt.Exchange) -> bool:
-		await exchange.load_markets()
-
-		symbol = symbol.lower()
-		for symb in exchange.symbols:
-			if symb.lower() == symbol:
-				return False
-
-		return False
+# 		return None
 
 
-	@self._retry
-	async def _valid_pair(self, base: str, quote: str, exchange: ccxt.Exchange) -> str:
-		quote = quote.lower()
-		base = base.lower()
+# 	@self._retry
+# 	async def _valid_symbol(self, symbol: str, exchange: ccxt.Exchange) -> bool:
+# 		await exchange.load_markets()
 
-		markets = await exchange.fetch_markets()
+# 		symbol = symbol.lower()
+# 		for symb in exchange.symbols:
+# 			if symb.lower() == symbol:
+# 				return False
 
-		for m in markets:
-			if m["quote"].lower() == quote:
-				if m["base"].lower() == base or m["baseId"].lower() == base:
-					return m["symbol"]
-
-		for m in markets:
-			symbol = m["symbol"]
-			if symbol.lower().startswith(base):
-				return symbol
-
-		for m in makrets:
-			symbol = m["symbol"]
-			if symbol.lower().find(base) > 0:
-				return symbol
-
-		return None
+# 		return False
 
 
-	@self._retry
-	async def fetch_ohlcv(self, exchange: ccxt.Exchange, market: str, dist=200) -> list:
-		markets = await exchange.load_markets()
+# 	@self._retry
+# 	async def _valid_pair(self, base: str, quote: str, exchange: ccxt.Exchange) -> str:
+# 		quote = quote.lower()
+# 		base = base.lower()
 
-		market = self._valid_symbol(market, exchange)
+# 		markets = await exchange.fetch_markets()
 
-		if not market:
-			return None
+# 		for m in markets:
+# 			if m["quote"].lower() == quote:
+# 				if m["base"].lower() == base or m["baseId"].lower() == base:
+# 					return m["symbol"]
 
-		since = (datetime.now() - timedelta(minutes=dist)).timestamp()
+# 		for m in markets:
+# 			symbol = m["symbol"]
+# 			if symbol.lower().startswith(base):
+# 				return symbol
 
-		return await exchange.fetch_ohlcv(market, "1d", since=since)
+# 		for m in makrets:
+# 			symbol = m["symbol"]
+# 			if symbol.lower().find(base) > 0:
+# 				return symbol
+
+# 		return None
 
 
-	@self._retry
-	async def fetch_ticker(self, exchange: str, market: str) -> dict:
-		exchange = getattr(ccxt, exchange)
+# 	@self._retry
+# 	async def fetch_ohlcv(self, exchange: ccxt.Exchange, market: str, dist=200) -> list:
+# 		markets = await exchange.load_markets()
 
-		if not exchange:
-			return
+# 		market = self._valid_symbol(market, exchange)
 
-		return exchange.fetch_ticker(market)
+# 		if not market:
+# 			return None
+
+# 		since = (datetime.now() - timedelta(minutes=dist)).timestamp()
+
+# 		return await exchange.fetch_ohlcv(market, "1d", since=since)
+
+
+# 	@self._retry
+# 	async def fetch_ticker(self, exchange: str, market: str) -> dict:
+# 		exchange = getattr(ccxt, exchange)
+
+# 		if not exchange:
+# 			return
+
+# 		return exchange.fetch_ticker(market)
 
 
 def _fetch_exchange(exchange: str) -> ccxt.Exchange:
@@ -105,7 +105,7 @@ def fetch_ohlcv(exchange: str = None, existing_exchange: ccxt.Exchange = None) -
 			return None
 
 
-class MarketInterface:
+class ExchangeInterface:
 	def __init__(self, logger):
 		self._logger = logger
 
@@ -188,8 +188,9 @@ class MarketInterface:
 			Dict of the market history with tick interval of tick interval.
 
 		"""
-		url = "https://bittrex.com/Api/v2.0/pub/market/GetTicks?marketName={0}&tickInterval={1}".format(
-			market, tick_interval)
+		url = "https://bittrex.com/Api/v2.0/pub/market/GetTicks?marketName={0}&tickInterval={1}"\
+			.format(market, tick_interval)
+
 		return await self._query_exchange(session, url)
 
 

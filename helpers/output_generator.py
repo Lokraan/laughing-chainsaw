@@ -36,6 +36,9 @@ def create_rsi_embed(data: dict) -> discord.Embed:
 	for symbol, rsi in data.items():
 		out += "[{0}] RSI [{1}]\n".format(symbol, rsi)
 
+	if out == "":
+		return None
+
 	return create_embed(title="RSI", text=out, 
 		highlight=True, discord_mark_up="md")
 
@@ -49,6 +52,9 @@ def create_price_update_embed(data: dict) -> discord.Embed:
 			prefix = "+"
 
 		out += "{0} {1} changed by {2}%\n".format(prefix, symbol, change)
+
+	if out == "":
+		return None
 
 	return create_embed(title="Price Updates", text=out, 
 		highlight=True, discord_mark_up="ini")

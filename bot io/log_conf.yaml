@@ -1,0 +1,25 @@
+version: 1
+
+formatters:
+  simple:
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    datefmt: "%H:%M"
+  precise:
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    datefmt: "%Y-%m-%d %H:%M:%S"
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: simple
+    stream: ext://sys.stdout
+  file:
+    class: logging.FileHandler
+    formatter: precise
+    filename: "bot io/log.log"
+
+loggers:
+  main:
+    handlers: [console, file]
+  bot:
+    handlers: [console, file]
