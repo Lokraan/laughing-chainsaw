@@ -6,6 +6,8 @@ It also prints out the market cap of the entire crypto market and market informa
 ## Adding the bot to your server
 I currently host the bot 24/7 on a vps and you're free to add it to your discord server if you'd like. To enable price/rsi updates just type `$start` in the desired channel and it will starts sending price/rsi updates to the channel. To stop it type, `$stop`.
 
+Currently under going changes, price/rsi updates do not work.
+
 https://discordapp.com/oauth2/authorize?client_id=392534322894340096&scope=bot
 
 
