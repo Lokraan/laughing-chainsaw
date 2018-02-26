@@ -14,8 +14,8 @@ sys.path.append("helpers/")
 
 from command_processor import CommandProcessor
 
-CONFIG_FILE = "config.json"
-LOGGING_CONFIG = "log_conf.yaml"
+CONFIG_FILE = "bot io/config.json"
+LOGGING_CONFIG = "bot io/log_conf.yaml"
 
 
 def get_config() -> dict:
@@ -63,7 +63,13 @@ if __name__ == '__main__':
 
 	@client.event
 	async def on_message(message):
-		await command_processor.process_message(command)
+		await command_processor.process_message(message)
+
+	@client.event
+	async def on_server_join(server):
+		self._logger.info("Joined {0}".format(server.name))
+		
+		bot.joined_server(server)	
 
 	# start
 	token = config["token"]

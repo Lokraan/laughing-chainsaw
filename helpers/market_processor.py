@@ -1,9 +1,10 @@
 
-import datetime
+from datetime import datetime, timedelta
 import asyncio
 import sys
 
 import ccxt.async as ccxt
+import tenacity
 import aiohttp
 
 import output_generator as og
@@ -17,9 +18,9 @@ class Processor:
 	def __init__(self, logger, config, mi):
 		self._logger = logger
 
-		self._rsi_tick_interval = config["rsi_tick_interval"]
-		self._rsi_time_frame = config["rsi_time_frame"]
+		self._rsi_timeframe = config["rsi_timeframe"]
 		self._over_bought = config["over_bought"]
+		self._rsi_period = config["rsi_period"]
 		self._free_fall = config["free_fall"]
 		self._over_sold = config["over_sold"]
 		self._mooning = config["mooning"]
@@ -27,7 +28,21 @@ class Processor:
 		self._exchange_market_prices = {}
 		self._significant_markets = set()
 
+		self._aretry = tenacity.AsyncRetrying(
+			wait=tenacity.wait_exponential(),
+			retry=(
+				tenacity.retry_if_exception(ccxt.DDoSProtection) | 
+				tenacity.retry_if_exception(ccxt.RequestTimeout))
+			)
+
 		self.mi = mi
+
+
+	def _get_exchange(self, exchange: str) -> ccxt.Exchange:
+		if exchange in ccxt.exchanges:
+			return getattr(ccxt, exchange)()
+
+		return None
 
 
 	async def load_exchanges(self, exchanges: list) -> None:
@@ -44,17 +59,18 @@ class Processor:
 		"""
 
 		for exchange in exchanges:
-			exchange = getattr(ccxt, exchange)()
+			exchange = self._get_exchange(exchange)
 
-			if exchange and exchange not in self._exchange_market_prices:
+			# ensure it hasn't been loaded yet
+			if exchange and exchange.id not in self._exchange_market_prices:
 				await exchange.load_markets()
 				
-				self._exchange_market_prices[exchange.id] = {}
-				storage = self._exchange_market_prices[exchange.id]
-
+				prices = {}
 				for symbol in exchange.symbols:
-					ticker = await exchange.fetch_ticker(symbol)
-					storage[symbol] = ticker["last"]
+					ticker = await self._aretry.call(exchange.fetch_ticker, symbol)
+					prices[symbol] = ticker["last"]
+
+					self._exchange_market_prices[exchange.id] = prices
 
 
 	def percent_change(self, new_price: int, old_price: int) -> float:
@@ -76,29 +92,37 @@ class Processor:
 		price_updates = {}
 		rsi_updates = {}
 
-		storage = self._exchange_market_prices[exchange.id]
+		old_prices = self._exchange_market_prices[exchange.id]
+
+		await self._aretry.call(exchange.load_markets)
 		for symbol in exchange.symbols:
 
-			new_price = exchange.fetch_ticker(symbol)["last_price"]
-			old_price = storage[symbol]
+			ticker = await self._aretry.call(exchange.fetch_ticker, symbol)
+
+			new_price = ticker["last"]
+			old_price = old_prices[symbol]
 
 			change = self.percent_change(new_price, old_price)
 
 			if change >= self._mooning or change <= self._free_fall:
 				price_updates[symbol] = change
-				storage[symbol] = new_price
+				old_prices[symbol] = new_price
 
-			since = datetime.now() - timedelta(days=500)
-			data = exchange.fetch_ohlcv(symbol, since.timestamp()) 
-			rsi = calc_rsi()
+			# if exchange.hasFetchOHLCV:
+			# 	since = datetime.now() - timedelta(days=500)
 
-			if rsi >= self._over_sold or rsi <= self._over_sold:
-				if symbol not in self._significant_markets:
-					rsi_updates[symbol] = rsi
-					self._significant_markets.add(symbol)
+			# 	data = await self._aretry.call(
+			# 		exchange.fetch_ohlcv, symbol, "1h", since.timestamp())
 
-			elif rsi in self._significant_markets:
-				self._significant_markets.remove(symbol)
+			# 	rsi = calc_rsi(data, self._rsi_period)
+
+			# 	if rsi >= self._over_sold or rsi <= self._over_sold:
+			# 		if symbol not in self._significant_markets:
+			# 			rsi_updates[symbol] = rsi
+			# 			self._significant_markets.add(symbol)
+
+			# 	elif rsi in self._significant_markets:
+			# 		self._significant_markets.remove(symbol)
 
 		return (price_updates, rsi_updates)
 
@@ -106,7 +130,7 @@ class Processor:
 	async def process_exchanges(self, exchanges: list) -> dict:
 		embeds = {}
 		for exchange in exchanges:
-			exchange = getattr(ccxt, exchange)
+			exchange = self._get_exchange(exchange)
 
 			if not exchange: continue
 
@@ -119,10 +143,7 @@ class Processor:
 			if rsi_updates:
 				outputs.append(og.create_rsi_update_embed(rsi_updates))
 
-			embeds[exchange.id] = [
-				og.create_price_update_embed(price_updates),
-				og.create_rsi_update_embed(rsi_updates)
-				]
+			embeds[exchange.id] = outputs
 
 		return embeds	
 

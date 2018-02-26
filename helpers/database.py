@@ -19,6 +19,18 @@ class ServerDatabase:
 		self._conn.commit()
 
 
+	def server_exists(self, server_id: str):
+		query = "SELECT id FROM servers WHERE id = %s"
+
+		self._cur.execute(query, [server_id])
+
+		result = self._cur.fetchone()
+		if result:
+			return True
+
+		return False
+
+
 	def add_server(self, server_id: str, name: str, prefix: str):
 		query = "INSERT INTO servers VALUES (%s, %s, %s, %s, %s)"
 
@@ -53,7 +65,7 @@ class ServerDatabase:
 		query = "SELECT id, name FROM servers"
 		self._cur.execute(query)
 
-		result = self._cur.fetchone()
+		result = self._cur.fetchall()
 
 		return result
 
@@ -103,10 +115,18 @@ class ServerDatabase:
 			self.update_exchanges(server_id, exchanges)
 
 
-	def number_update_servers(self) -> None:
+	def number_update_servers(self) -> int:
 		query = "SELECT Count(*) FROM servers WHERE output_channel IS NOT NULL"
 
 		self._cur.execute(query)
-
 		return self._cur.fetchone()[0]
-		
+
+
+	def servers_wanting_signals(self) -> list:
+		query = """
+			SELECT id, name, output_channel, exchanges 
+			FROM servers WHERE output_channel IS NOT NULL
+			"""
+
+		self._cur.execute(query)
+		return self._cur.fetchall()

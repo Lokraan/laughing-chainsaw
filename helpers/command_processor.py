@@ -37,7 +37,7 @@ class CommandProcessor:
 				text = "{0.author} asked to start checking exchanges {1}".format(message, params)
 				self._logger.info(text)
 
-				await self._bot.check_exchanges(message, params)
+				await self._bot.add_server_for_signals(message, params)
 
 			elif cmd == "stop":
 				text = "{0.author} asked to stop checking exchanges {1}".format(message, params)

@@ -3,6 +3,7 @@ import logging.config
 import datetime
 import logging
 import asyncio
+import psycopg2
 import locale
 import random
 import yaml
@@ -16,8 +17,9 @@ import aiohttp
 sys.path.append("helpers/")
 
 import output_generator as og
-import processor as processor
-import market_grabber
+import exchange_interface
+import market_processor
+import database
 
 CONFIG_FILE = "config.json"
 LOGGING_CONFIG = "log_conf.yaml"
@@ -52,20 +54,20 @@ class Bot:
 		self._interval = config["update_interval"]
 		self._prefix = config["prefix"]
 
-		chan = config["update_channel"]
-		self._update_channels = set([chan])
+		self.mi = exchange_interface.ExchangeInterface(self._logger)
+		self.mp = market_processor.Processor(self._logger, config, self.mi)
 
-		self.mi = market_grabber.MarketInterface(self._logger)
-		self.mp = processor.Processor(self._logger, config, self.mi)
+		self._db = database.ServerDatabase("hasami", "hasami", "password")
 
 		self._updating = False
-		self._cmc_pairs = []
 
 		self._client.loop.create_task(self._set_playing_status())
+		self._client.loop.create_task(self._check_exchanges())
 
 
 	async def _set_playing_status(self):
 		locale.setlocale(locale.LC_ALL, "")
+
 		while True:
 			await self._client.wait_until_ready()
 
@@ -82,7 +84,35 @@ class Bot:
 			await asyncio.sleep(900)
 
 
-	async def check_exchanges(self, message: discord.Message, exchanges: str) -> None:
+	async def add_server_for_signals(self, message: discord.Message, 
+			exchanges: list) -> None:
+
+		await self._client.send_message(
+			message.channel , "Starting {0.author.mention} !".format(message)
+			)
+
+		if not exchanges:
+			exchanges = ["bittrex"]
+
+		server_id = message.server.id
+		server_name = message.server.name
+		
+		if not self._db.server_exists(server_id):
+			self._db.add_server(server_id, server_name, self._prefix)
+
+		# load markets
+		await self.mp.load_exchanges(exchanges)
+
+		self._db.update_output_channel(server_id, message.channel.id)
+		self._db.add_exchanges(server_id, exchanges)
+
+		text = "Added {0.server.name}-{0.channel} to rsi/update outputs and checking {1}"\
+			.format(message, exchanges)
+
+		self._logger.info(text)
+
+
+	async def _check_exchanges(self) -> None:
 		"""
 		Begins checking markets, notifies user who called for it of that it's starting.
 
@@ -100,65 +130,60 @@ class Bot:
 		
 		"""
 
-		await self._client.send_message(
-			message.channel , "Starting {0.author.mention} !".format(message)
-			)
+		# initialize updates
+		servers = self._db.servers_wanting_signals()
 
-		self._update_channels.add(message.channel.id)
-		self._logger.info("Added {0.channel} ({0.channel.id}) to rsi update outputs"\
-			.format(message))
+		for server in servers:
+			exchanges = server[3].split(" ")
+			self._logger.info("Loading exchanges {0}".format(exchanges))
+			await self.mp.load_exchanges(exchanges)
 
-		if self._updating:
-			return
+		await asyncio.sleep(int(self._interval*60))
 
-		self._updating = True
+		while True:
+			await self._client.wait_until_ready()
 
-		self._logger.info("Starting to check markets.")
-		async with aiohttp.ClientSession() as session:
+			processed_exchanges = {}
 
-			# load markets
-			await self.mp.load_markets(session)
+			servers = self._db.servers_wanting_signals()
 
-			# loop through at least once
-			while self._updating:
-				price_updates = {}
+			for server in servers:
 
-				self._logger.info("Checking markets")
+				server_id = server[0]
+				server_name = server[1]
 
-				outputs, price_updates["Bittrex"] = await self.mp.check_bittrex_markets(
-					session)
+				channel = server[2]
+				exchanges = server[3]
 
-				outputs2, price_updates["Binance"] = await self.mp.check_binance_markets(
-					session)
+				channel = discord.Object(channel)
+				exchanges = exchanges.split(" ")
 
-				# send outputs
-				for key, val in outputs2.items(): 
-					outputs[key].extend(val)
-					self._logger.info("Outputs: {0}".format(outputs))
+				outputs = {}
 
-					highlight =  "diff" 
-					if key == "RSI":
-						highlight = "ini"
+				# no need to perform multiple calculations on pre-processed exchanges
+				for exchange in exchanges:
+					if exchange in processed_exchanges:
+						outputs[exchange] = processed_exchanges[exchange]
 
-					embed = og.create_embed(title=key, text="\n".join(outputs[key]), 
-						highlight=True, discord_mark_up=highlight)
+				# remove duplicate exchanges so they don't get processed
+				exchanges = [ex for ex in exchanges if ex not in outputs]
 
-					if embed:
-						for channel in self._update_channels:
-							channel = discord.Object(channel)
-							try:
-								await self._client.send_message(destination=channel, embed=embed)
-							except discord.HTTPException as e:
-								self._logger.info(e)
+				self._logger.info("Checking exchanges {0} for server {1} ({2})".format(
+					exchanges, server_id, server_name))
 
+				outputs.update(await self.mp.process_exchanges(exchanges))
+				self._logger.debug(outputs)
 
-				self._logger.debug("Async sleeping {0}".format(str(self._interval * 60)))
-				await asyncio.sleep(int(self._interval*60))
+				for exchange, embeds in outputs.items():
+					processed_exchanges[exchange] = embeds
+					for embed in embeds:
+						await self._client.send_message(destination=channel, 
+							embed=embed)
 
-				self.mp.update_prices(price_updates)
+			await asyncio.sleep(int(self._interval*60))
 
 
-	async def stop_checking_markets(self, message: discord.Message) -> None:
+	async def stop_checking_markets(self, message: discord.Message, exchanges: list) -> None:
 		"""
 		Stops checking markets, notifies user who called for it of that it's stopping.
 
@@ -169,19 +194,32 @@ class Bot:
 		Returns:
 			None
 
+		TODO: 
+			If no markets are specified stop completely, else remove exchanges from being
+			updated.
+
 		"""
 		chan = message.channel
 
 		await self._client.send_message(
 			message.channel, "Stopping {0.author.mention} !".format(message))
-			
-		if chan.id in self._update_channels:
-			self._logger.info("Removing {0.id} from update channels".format(chan))
-			self._update_channels.remove(chan.id)
 
-		if len(self._update_channels) == 0:
-			self._logger.info("Stopping checking markets")
-			self._updating = False
+		server_id = message.server.id
+		self._db.update_output_channel(server_id, None)
+		
+		if len(exchanges) == 0:
+			text = "Removing {0.server.name}-{1} from update channels"\
+				.format(message, chan)
+
+			self._db.update_exchanges(server_id, None)
+
+		else:
+			text = "Removing exchanges {2} from {0.server.name}-{1}"\
+				.format(message, chan, exchanges)
+
+			self._db.remove_exchanges(server_id, exchanges)
+
+		self._logger.info(text)
 
 
 	async def price(self, message: discord.Message, markets: list) -> None:
@@ -242,3 +280,8 @@ class Bot:
 			)
 		sys.exit()
 
+
+	def joined_server(server):
+		self._logger.info("Joined {0}".format(server.name))
+
+		self._db.add_server(server.id, server.name, self._prefix)

@@ -30,38 +30,30 @@ def get_color():
         return color
 
 
-def create_rsi_embed(data: dict) -> discord.Embed:
+def create_rsi_update_embed(data: dict) -> discord.Embed:
 	out = ""
 
 	for symbol, rsi in data.items():
 		out += "[{0}] RSI [{1}]\n".format(symbol, rsi)
 
-	if out == "":
-		return None
-
-	return create_embed(title="RSI", text=out, 
-		highlight=True, discord_mark_up="md")
+	return create_embed(title="RSI", text=out, discord_mark_up="ini")
 
 
 def create_price_update_embed(data: dict) -> discord.Embed:
 	out = ""
 
-	for symbol, change in data.tiems():
+	for symbol, change in data.items():
 		prefix = "-"
 		if change > 0:
 			prefix = "+"
 
 		out += "{0} {1} changed by {2}%\n".format(prefix, symbol, change)
 
-	if out == "":
-		return None
-
-	return create_embed(title="Price Updates", text=out, 
-		highlight=True, discord_mark_up="ini")
+	return create_embed(title="Price Updates", text=out, discord_mark_up="diff")
 
 
-def create_embed(title: str, text: str, highlight: bool = True, 
-	discord_mark_up: str ='ini', color: int = None) -> discord.Embed: 
+def create_embed(title: str, text: str, discord_mark_up: str = None, 
+		color: int = None) -> discord.Embed: 
 	"""
 	Generates a pretty embed for discord consisting of two groups,
 	the significant price changes / RSI vals.
@@ -86,8 +78,7 @@ def create_embed(title: str, text: str, highlight: bool = True,
 		colour=color
 		)
 
-
-	if highlight:
+	if discord_mark_up:
 		text = "```{0}\n{1}\n```".format(discord_mark_up, text) 
 
 	#\u200b
@@ -125,7 +116,6 @@ def create_cmc_price_embed(info: dict) -> discord.Embed:
 			"{0: <8}  - {1}".format("+" + v + "%", suffixes[i])
 			for i, v in enumerate(changes)]
 
-
 	embed.set_thumbnail(url=img_url)
 	embed.add_field(name="Price", value=text, inline=True)
 
@@ -156,8 +146,6 @@ def create_cmc_cap_embed(info: dict) -> discord.Embed:
 
         mc = locale.currency(float(info["total_24h_volume_usd"]), grouping=True)
         embed.add_field(name="24h Volume USD", value=mc+"\n\u200b", inline=True)
-        
-#        embed.add_field(name="\u200b", value="-", inline=False)
         
         mc = "{}%".format(info["bitcoin_percentage_of_market_cap"])
         embed.add_field(name="Bitcoin Dominance", value=mc, inline=True)
