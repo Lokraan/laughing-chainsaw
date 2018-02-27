@@ -281,6 +281,14 @@ class Bot:
 		sys.exit()
 
 
+	async def source(self, message: discord.Message) -> None:
+		await self._client.send_message(message.channel, "https://github.com/lokraan/hasami")
+
+
+	async def change_prefix(self, message: discord.Message, params: list) -> None:
+		
+
+
 	def joined_server(server):
 		self._logger.info("Joined {0}".format(server.name))
 

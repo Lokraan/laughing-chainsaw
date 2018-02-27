@@ -112,8 +112,8 @@ def create_cmc_price_embed(info: dict) -> discord.Embed:
 
 	suffixes = [" 1 hour", " 24 hour", " 1 week"]
 
-	changes = ["{0: <8} - {1}".format(v + "%", suffixes[i]) if float(v) < 0 else 
-			"{0: <8}  - {1}".format("+" + v + "%", suffixes[i])
+	changes = ["{0: <6} - {1}".format(v + "%", suffixes[i]) if float(v) < 0 else 
+			"{0: <6}  - {1}".format("+" + v + "%", suffixes[i])
 			for i, v in enumerate(changes)]
 
 	embed.set_thumbnail(url=img_url)

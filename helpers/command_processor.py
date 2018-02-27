@@ -55,7 +55,16 @@ class CommandProcessor:
 				await self._bot.crypto_cap(message)
 
 			elif cmd == "source":
-				await client.send_message(message.channel, "https://github.com/lokraan/hasami")
+				await self._bot.source(message)
+
+			elif cmd == "prefix":
+				user = message.author
+				role = user.top_role
+
+				for permission in role.permissions:
+					if permission.administrator:
+						await self._bot.change_prefix(message, params)
+
 
 			elif cmd in ccxt.exchanges:
 				await self._bot.price(message, markets, exchange=getattr(ccxt, exchange))
