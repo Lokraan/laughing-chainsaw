@@ -45,21 +45,19 @@ class Bot:
 		_rsi_time_frame: Number of candles used to calculate RSI.
 
 	"""
-	def __init__(self, client: discord.Client, logger: logging.Logger, config: dict):
+	def __init__(self, client: discord.Client, logger: logging.Logger, config: dict, db=None):
 		self._client = client
 		self._logger = logger
 	
 		# config stuff
 
 		self._interval = config["update_interval"]
-		self._prefix = config["prefix"]
-
-		self.mi = exchange_interface.ExchangeInterface(self._logger)
-		self.mp = market_processor.Processor(self._logger, config, self.mi)
+		self._base_prefix = config["prefix"]
 
 		self._db = database.ServerDatabase("hasami", "hasami", "password")
 
-		self._updating = False
+		self.mi = exchange_interface.ExchangeInterface(self._logger)
+		self.mp = market_processor.Processor(self._logger, config, self.mi, self._db)
 
 		self._client.loop.create_task(self._set_playing_status())
 		self._client.loop.create_task(self._check_exchanges())
@@ -98,7 +96,7 @@ class Bot:
 		server_name = message.server.name
 		
 		if not self._db.server_exists(server_id):
-			self._db.add_server(server_id, server_name, self._prefix)
+			self._db.add_server(server_id, server_name, self._base_prefix)
 
 		# load markets
 		await self.mp.load_exchanges(exchanges)
@@ -110,6 +108,15 @@ class Bot:
 			.format(message, exchanges)
 
 		self._logger.info(text)
+
+
+	async def _initialize_checker(self) -> None:
+		servers = self._db.servers_wanting_signals()
+
+		for server in servers:
+			exchanges = server[3].split(" ")
+			self._logger.info("Loading exchanges {0}".format(exchanges))
+			await self.mp.load_exchanges(exchanges)
 
 
 	async def _check_exchanges(self) -> None:
@@ -129,16 +136,6 @@ class Bot:
 			None
 		
 		"""
-
-		# initialize updates
-		servers = self._db.servers_wanting_signals()
-
-		for server in servers:
-			exchanges = server[3].split(" ")
-			self._logger.info("Loading exchanges {0}".format(exchanges))
-			await self.mp.load_exchanges(exchanges)
-
-		await asyncio.sleep(int(self._interval*60))
 
 		while True:
 			await self._client.wait_until_ready()
@@ -181,6 +178,43 @@ class Bot:
 							embed=embed)
 
 			await asyncio.sleep(int(self._interval*60))
+
+
+	async def check_exchange_price_updates(self) -> None:
+		while True:
+			server = self._db.servers_wanting_signals()
+
+			processed_exchanges = {}
+
+			for server in servers:
+
+				server_id = server[0]
+				server_name = server[1]
+
+				channel = discord.Object(server[2])
+				exchanges = server[3].split(" ")
+
+				outputs = {}
+
+				# no need to perform multiple calculations on pre-processed exchanges
+				for exchange in exchanges:
+					if exchange in processed_exchanges:
+						outputs[exchange] = processed_exchanges[exchange]
+
+				# remove duplicate exchanges so they don't get processed
+				exchanges = [ex for ex in exchanges if ex not in outputs]
+
+				self._logger.info("Checking exchanges {0} for server {1} ({2})".format(
+					exchanges, server_id, server_name))
+
+				outputs.update(await self.mp.process_exchanges(exchanges))
+				self._logger.debug(outputs)
+
+				for exchange, embeds in outputs.items():
+					processed_exchanges[exchange] = embeds
+					for embed in embeds:
+						await self._client.send_message(destination=channel, 
+							embed=embed)
 
 
 	async def stop_checking_markets(self, message: discord.Message, exchanges: list) -> None:
@@ -286,10 +320,13 @@ class Bot:
 
 
 	async def change_prefix(self, message: discord.Message, params: list) -> None:
-		
+		self._db.update_prefix(message.server.id, params[0])
+
+		text = "Changed {0.author.mention} prefix to {1}".format(message, params[0])
+		await self._client.send_message(message.channel, text)
 
 
 	def joined_server(server):
 		self._logger.info("Joined {0}".format(server.name))
 
-		self._db.add_server(server.id, server.name, self._prefix)
+		self._db.add_server(server.id, server.name, self._base_prefix)

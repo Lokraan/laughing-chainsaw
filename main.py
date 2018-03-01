@@ -13,6 +13,7 @@ import hasami
 sys.path.append("helpers/")
 
 from command_processor import CommandProcessor
+import database
 
 CONFIG_FILE = "bot io/config.json"
 LOGGING_CONFIG = "bot io/log_conf.yaml"
@@ -49,10 +50,11 @@ if __name__ == '__main__':
 	setup_logging(config)
 
 	logger = logging.getLogger("main")
-	bot = hasami.Bot(client=client, logger=logging.getLogger("bot"), config=config)
 
-	prefix = config["prefix"]
-	command_processor = CommandProcessor(bot, logger, prefix)
+	db = database.ServerDatabase("hasami", "hasami", "password")
+	bot = hasami.Bot(client=client, logger=logging.getLogger("bot"), config=config, db=db)
+
+	command_processor = CommandProcessor(bot, logger, db)
 
 	# client events
 	@client.event
@@ -69,7 +71,7 @@ if __name__ == '__main__':
 	async def on_server_join(server):
 		self._logger.info("Joined {0}".format(server.name))
 		
-		bot.joined_server(server)	
+		bot.joined_server(server)
 
 	# start
 	token = config["token"]

@@ -5,18 +5,20 @@ import re
 
 
 class CommandProcessor:
-	def __init__(self, bot, logger, command_prefix):
-		self._command_prefix = command_prefix
+	def __init__(self, bot, logger, db):
 		self._logger = logger
 		self._bot = bot
+		self._db = db
 
 	async def process_message(self, message: discord.Message):
 		# Default greet
 
 		content = message.content
 
-		if content.startswith(self._command_prefix):
-			content = content.strip(self._command_prefix)
+		prefix = self._db.get_prefix(message.server.id)
+
+		if content.startswith(prefix):
+			content = content.strip(prefix)
 
 			regex = "\\s+|,?"
 
@@ -64,7 +66,6 @@ class CommandProcessor:
 				for permission in role.permissions:
 					if permission.administrator:
 						await self._bot.change_prefix(message, params)
-
 
 			elif cmd in ccxt.exchanges:
 				await self._bot.price(message, markets, exchange=getattr(ccxt, exchange))

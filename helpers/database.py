@@ -61,6 +61,18 @@ class ServerDatabase:
 		return result
 
 
+	def get_prefix(self, server_id: str):
+		query = "SELECT prefix FROM servers WHERE id = %s LIMIT 1"
+
+		self._cur.exeucte(query, [server_id])
+
+		result = self._cur.fetchone()
+		if result:
+			return result[0]
+
+		return result
+
+
 	def get_servers(self):
 		query = "SELECT id, name FROM servers"
 		self._cur.execute(query)
