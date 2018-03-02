@@ -59,8 +59,7 @@ if __name__ == '__main__':
 	# client events
 	@client.event
 	async def on_ready():
-		logger.info("logged in")
-		logger.debug("logged in as {0}".format(client.user.name))
+		logger.info("logged in as {0}".format(client.user.name))
 
 
 	@client.event

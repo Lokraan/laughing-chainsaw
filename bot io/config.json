@@ -7,6 +7,6 @@
 	"over_bought": 75,
 	"over_sold": 25,
 	"update_interval": 1,
-	"debug": 0,
+	"debug": 1,
 	"prefix": "$"
 }

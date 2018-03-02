@@ -45,7 +45,7 @@ class CommandProcessor:
 				text = "{0.author} asked to stop checking exchanges {1}".format(message, params)
 				self._logger.info(text)
 
-				await self._bot.stop_checking_markets(message, params)
+				await self._bot.stop_sending_signals(message, params)
 
 			elif cmd == "price" or cmd == "p":
 				text = "{0.author} asked for the price of markets {0}".format(message, params)

@@ -1,9 +1,10 @@
 
 import logging.config
+import traceback
 import datetime
+import psycopg2
 import logging
 import asyncio
-import psycopg2
 import locale
 import random
 import yaml
@@ -17,8 +18,7 @@ import aiohttp
 sys.path.append("helpers/")
 
 import output_generator as og
-import exchange_interface
-import market_processor
+import exchange_processor
 import database
 
 CONFIG_FILE = "config.json"
@@ -56,11 +56,14 @@ class Bot:
 
 		self._db = database.ServerDatabase("hasami", "hasami", "password")
 
-		self.mi = exchange_interface.ExchangeInterface(self._logger)
-		self.mp = market_processor.Processor(self._logger, config, self.mi, self._db)
+		self.mp = exchange_processor.Processor(self._logger, config, self._db)
 
 		self._client.loop.create_task(self._set_playing_status())
-		self._client.loop.create_task(self._check_exchanges())
+
+		self._client.loop.run_until_complete(self._initialize_checker())
+
+		self._client.loop.create_task(self.send_server_price_update_signals())
+		self._client.loop.create_task(self.send_server_rsi_update_signals())
 
 
 	async def _set_playing_status(self):
@@ -69,7 +72,7 @@ class Bot:
 		while True:
 			await self._client.wait_until_ready()
 
-			data = await self.mi.get_crypto_mcap()
+			data = await self.mp.get_crypto_mcap()
 
 			mc = int(data["total_market_cap_usd"])
 			mc = locale.currency(mc, grouping=True)
@@ -114,110 +117,41 @@ class Bot:
 		servers = self._db.servers_wanting_signals()
 
 		for server in servers:
+			print(server)
 			exchanges = server[3].split(" ")
 			self._logger.info("Loading exchanges {0}".format(exchanges))
 			await self.mp.load_exchanges(exchanges)
 
 
-	async def _check_exchanges(self) -> None:
-		"""
-		Begins checking markets, notifies user who called for it of that it's starting.
-
-		Processes bittrex and binance markets for signifcant price/rsi updates 
-		and sends outputs to discord. 
-		
-		Does while self._updating is true every interval minutes. 
-
-		Args:
-			message: The message used to ask the bot to start, used
-			to mention the user that it's starting.
-
-		Returns:
-			None
-		
-		"""
-
+	async def send_server_price_update_signals(self) -> None:
 		while True:
-			await self._client.wait_until_ready()
+			try: 
+				async for channel, embed in self.mp.yield_exchange_price_updates():
+					channel = discord.Object(channel)
+					await self._client.send_message(channel, embed=embed)
 
-			processed_exchanges = {}
+			except Exception as e:
+				self._logger.debug(traceback.print_exc())
+				self._logger.warning(e)
 
-			servers = self._db.servers_wanting_signals()
-
-			for server in servers:
-
-				server_id = server[0]
-				server_name = server[1]
-
-				channel = server[2]
-				exchanges = server[3]
-
-				channel = discord.Object(channel)
-				exchanges = exchanges.split(" ")
-
-				outputs = {}
-
-				# no need to perform multiple calculations on pre-processed exchanges
-				for exchange in exchanges:
-					if exchange in processed_exchanges:
-						outputs[exchange] = processed_exchanges[exchange]
-
-				# remove duplicate exchanges so they don't get processed
-				exchanges = [ex for ex in exchanges if ex not in outputs]
-
-				self._logger.info("Checking exchanges {0} for server {1} ({2})".format(
-					exchanges, server_id, server_name))
-
-				outputs.update(await self.mp.process_exchanges(exchanges))
-				self._logger.debug(outputs)
-
-				for exchange, embeds in outputs.items():
-					processed_exchanges[exchange] = embeds
-					for embed in embeds:
-						await self._client.send_message(destination=channel, 
-							embed=embed)
-
-			await asyncio.sleep(int(self._interval*60))
+			await asyncio.sleep(int(self._interval * 60))
 
 
-	async def check_exchange_price_updates(self) -> None:
+	async def send_server_rsi_update_signals(self) -> None:
 		while True:
-			server = self._db.servers_wanting_signals()
+			try:
+				async for channel, embed in self.mp.yield_exchange_rsi_updates():
+					channel = discord.Object(channel)
+					await self._client.send_message(channel, embed=embed)
 
-			processed_exchanges = {}
+			except Exception as e:
+				self._logger.debug(traceback.print_exc())
+				self._logger.warning(e)
 
-			for server in servers:
-
-				server_id = server[0]
-				server_name = server[1]
-
-				channel = discord.Object(server[2])
-				exchanges = server[3].split(" ")
-
-				outputs = {}
-
-				# no need to perform multiple calculations on pre-processed exchanges
-				for exchange in exchanges:
-					if exchange in processed_exchanges:
-						outputs[exchange] = processed_exchanges[exchange]
-
-				# remove duplicate exchanges so they don't get processed
-				exchanges = [ex for ex in exchanges if ex not in outputs]
-
-				self._logger.info("Checking exchanges {0} for server {1} ({2})".format(
-					exchanges, server_id, server_name))
-
-				outputs.update(await self.mp.process_exchanges(exchanges))
-				self._logger.debug(outputs)
-
-				for exchange, embeds in outputs.items():
-					processed_exchanges[exchange] = embeds
-					for embed in embeds:
-						await self._client.send_message(destination=channel, 
-							embed=embed)
+			await asyncio.sleep(int(self._interval * 60))
 
 
-	async def stop_checking_markets(self, message: discord.Message, exchanges: list) -> None:
+	async def stop_sending_signals(self, message: discord.Message, exchanges: list) -> None:
 		"""
 		Stops checking markets, notifies user who called for it of that it's stopping.
 
@@ -267,14 +201,14 @@ class Bot:
 			if not market:
 				continue
 
-			info = await self.mi.cmc_market_query(market)
+			info = await self.mp.cmc_market_query(market)
 			await self._client.send_message(
 				message.channel, embed=og.create_cmc_price_embed(info[0]))
 
 
 	async def crypto_cap(self, message: discord.Message) -> None:
 
-		info = await self.mi.get_crypto_mcap()
+		info = await self.mp.get_crypto_mcap()
 
 		await self._client.send_message(
 			message.channel, embed=og.create_cmc_cap_embed(info))
@@ -330,3 +264,4 @@ class Bot:
 		self._logger.info("Joined {0}".format(server.name))
 
 		self._db.add_server(server.id, server.name, self._base_prefix)
+
