@@ -15,6 +15,7 @@ class CommandProcessor:
 
 		content = message.content
 
+		print(content)
 		prefix = self._db.get_prefix(message.server.id)
 
 		if content.startswith(prefix):
@@ -23,6 +24,8 @@ class CommandProcessor:
 			regex = "\\s+|,?"
 
 			content_split = re.split(regex, content)
+
+			print(content_split)
 
 			cmd = content_split[0]
 			params = content_split[1:]
@@ -61,10 +64,12 @@ class CommandProcessor:
 
 			elif cmd == "prefix":
 				user = message.author
-				role = user.top_role
+				
+				chann = message.channel
+				permissions = chann.permissions_for(user)
 
-				for permission in role.permissions:
-					if permission.administrator:
+				if permissions.administrator:
+					if len(params) > 0:
 						await self._bot.change_prefix(message, params)
 
 			elif cmd in ccxt.exchanges:

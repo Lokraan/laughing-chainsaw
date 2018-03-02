@@ -329,7 +329,7 @@ class Processor:
 
 	async def find_cmc_ticker(self, ticker) -> str:
 
-		tickers = await self.mi.get_cmc_tickers()
+		tickers = await self.get_cmc_tickers()
 
 		ticker = ticker.lower()
 
