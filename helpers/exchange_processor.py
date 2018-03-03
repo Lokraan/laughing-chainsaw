@@ -289,7 +289,7 @@ class Processor:
 
 		"""
 
-		async with aiohttp.ClientSesson() as sess:
+		async with aiohttp.ClientSession() as sess:
 			async with sess.get(url) as resp:
 				return await resp.json()
 				
@@ -324,6 +324,7 @@ class Processor:
 		url = "https://api.coinmarketcap.com/v1/ticker/?limit=0"
 
 		self._logger.debug("Getting cmc tickers")
+
 		return await self._aretry.call(self._fetch_data, url)
 
 
