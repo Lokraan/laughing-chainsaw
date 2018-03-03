@@ -3,8 +3,12 @@ import psycopg2
 import re
 
 class ServerDatabase:
-	def __init__(self, dbname, username, password):
-		self._conn = psycopg2.connect(dbname=dbname, user=username, password=password)
+	def __init__(self, dbname, username, password=None):
+		if password:
+			self._conn = psycopg2.connect(dbname=dbname, user=username, password=password)
+		else:
+			self._conn = psycopg2.connect(dbname=dbname, user=username)
+			
 		self._cur = self._conn.cursor()
 
 		self._cur.execute(
