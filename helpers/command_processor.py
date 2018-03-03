@@ -15,7 +15,6 @@ class CommandProcessor:
 
 		content = message.content
 
-		print(content)
 		prefix = self._db.get_prefix(message.server.id)
 
 		if content.startswith(prefix):
@@ -24,8 +23,6 @@ class CommandProcessor:
 			regex = "\\s+|,?"
 
 			content_split = re.split(regex, content)
-
-			print(content_split)
 
 			cmd = content_split[0]
 			params = content_split[1:]
