@@ -1,148 +1,169 @@
 
-import psycopg2
+import asyncio
+import asyncpg
 import re
 
 class ServerDatabase:
-	def __init__(self, dbname, username, password=None):
-		if password:
-			self._conn = psycopg2.connect(dbname=dbname, user=username, password=password)
-		else:
-			self._conn = psycopg2.connect(dbname=dbname, user=username)
-			
-		self._cur = self._conn.cursor()
+	def __init__(self, database, user, password=None):
+		self._database = database
+		self._user = user
+		self._password = password
 
-		self._cur.execute(
+		loop = asyncio.get_event_loop()
+		loop.run_until_complete(self.create_db())
+
+
+	async def create_db(self):
+		conn = await asyncpg.connect(
+			database=self._database, user=self._user, password=self._password
+			)
+
+		await conn.execute(
 			"""
-			CREATE TABLE IF NOT EXISTS servers
-			(id TEXT PRIMARY KEY, name TEXT,
-			prefix TEXT, output_channel TEXT, 
-			exchanges TEXT)
+			CREATE TABLE IF NOT EXISTS servers (
+				id TEXT PRIMARY KEY, 
+				name TEXT,
+				prefix TEXT,
+				output_channel TEXT, 
+				exchanges TEXT ARRAY
+			)
 			"""
 		)
 
-		self._conn.commit()
+		await conn.close()
+
+		self.pool = await asyncpg.create_pool(
+			database=self._database, user=self._user, password=self._password)
 
 
-	def server_exists(self, server_id: str):
-		query = "SELECT id FROM servers WHERE id = %s"
+	async def get_server(self, server_id: str) -> list:
+		query = "SELECT * FROM servers WHERE id = $1"
 
-		self._cur.execute(query, [server_id])
+		async with self.pool.acquire() as conn:
+			async with conn.transaction():
+				return await conn.fetchrow(query, server_id)
 
-		result = self._cur.fetchone()
-		if result:
+
+	async def server_exists(self, server_id: str):
+		if await self.get_server(server_id):
 			return True
 
 		return False
 
 
-	def add_server(self, server_id: str, name: str, prefix: str):
-		query = "INSERT INTO servers VALUES (%s, %s, %s, %s, %s)"
+	async def add_server(self, server_id: str, name: str, prefix: str):
+		query = "INSERT INTO servers VALUES ($1, $2, $3, $4, $5)"
 
-		self._cur.execute(query, [server_id, name, prefix, None, None])
-
-
-	def get_exchanges(self, server_id: str):
-		query = "SELECT exchanges FROM servers WHERE id = %s LIMIT 1"
-
-		self._cur.execute(query, [server_id])
-
-		result = self._cur.fetchone()
-		if result:
-			return result[0]
-
-		return result
+		async with self.pool.acquire() as conn:
+			async with conn.transaction():
+				await conn.execute(query, server_id, name, prefix, None, None)
 
 
-	def get_output_channel(self, server_id: str):
-		query = "SELECT output_channel FROM servers WHERE id = %s LIMIT 1"
+	async def get_exchanges(self, server_id: str):
+		query = "SELECT exchanges FROM servers WHERE id = $1"
 
-		self._cur.execute(query, [server_id])
+		async with self.pool.acquire() as conn:
+			async with conn.transaction():
+				res = await conn.fetchval(query, server_id)
 
-		result = self._cur.fetchone()
-		if result:
-			return result[0]
-
-		return result
+				return res
 
 
-	def get_prefix(self, server_id: str):
-		query = "SELECT prefix FROM servers WHERE id = %s LIMIT 1"
+	async def get_output_channel(self, server_id: str):
+		query = "SELECT output_channel FROM servers WHERE id = $1"
 
-		self._cur.execute(query, [server_id])
-
-		result = self._cur.fetchone()
-		if result:
-			return result[0]
-
-		return result
+		async with self.pool.acquire() as conn:
+			async with conn.transaction():
+				res = await conn.fetchval(query, server_id)
+				
+				return res
 
 
-	def get_servers(self):
+	async def get_prefix(self, server_id: str):
+		query = "SELECT prefix FROM servers WHERE id = $1"
+
+		async with self.pool.acquire() as conn:
+			async with conn.transaction():
+				res = await conn.fetchval(query, server_id)
+
+				return res
+
+
+	async def get_servers(self):
 		query = "SELECT id, name FROM servers"
-		self._cur.execute(query)
-
-		result = self._cur.fetchall()
-
-		return result
-
-
-	def update_prefix(self, server_id: str, prefix: str) -> None:
-		query = "UPDATE servers SET prefix = %s WHERE id = %s"
-
-		self._cur.execute(query, [prefix, server_id])
-
-		self._conn.commit()
-
-
-	def update_output_channel(self, server_id: str, output_channel: str) -> None:
-		query = "UPDATE servers SET output_channel = %s WHERE id = %s"
-
-		self._cur.execute(query, [output_channel, server_id])
-		self._conn.commit()
-
-
-	def update_exchanges(self, server_id: str, exchanges: str) -> None:
-		query = "UPDATE servers SET exchanges = %s WHERE id = %s"
-
-		self._cur.execute(query, [exchanges, server_id])
-
-
-	def add_exchanges(self, server_id: str, new_exchanges: list) -> None:
-		exchanges = self.get_exchanges(server_id)
 		
-		if exchanges:
-			exchanges += " " + 	" ".join(new_exchanges)
+		async with self.pool.acquire() as conn:
+			async with conn.transaction():
+				res = await conn.fetchval(query, server_id)
 
+				return res
+
+
+	async def update_prefix(self, server_id: str, prefix: str) -> None:
+		query = "UPDATE servers SET prefix = $1 WHERE id = $2"
+
+		async with self.pool.acquire() as conn:
+			async with conn.transaction():
+				await conn.execute(query, prefix, server_id)
+
+
+	async def update_output_channel(self, server_id: str, output_channel: str) -> None:
+		query = "UPDATE servers SET output_channel = $1 WHERE id = $2"
+
+		async with self.pool.acquire() as conn:
+			async with conn.transaction():
+				await conn.execute(query, output_channel, server_id)
+
+
+	async def update_exchanges(self, server_id: str, exchanges: list) -> None:
+		query = "UPDATE servers SET exchanges = $1 WHERE id = $2"
+
+		async with self.pool.acquire() as conn:
+			async with conn.transaction():
+				await conn.execute(query, exchanges, server_id)
+
+
+	async def add_exchanges(self, server_id: str, new_exchanges: list) -> None:
+		exchanges = await self.get_exchanges(server_id)
+
+		if exchanges:
+			exchanges.extend(new_exchanges)
 		else:
-			exchanges = " ".join(new_exchanges)
+			exchanges = new_exchanges
 
 		# remove duplicates
-		exchanges = set(exchanges.split(" "))
-		exchanges = " ".join(exchanges)
+		exchanges = set(exchanges)
+		exchanges = list(exchanges)
 
-		self.update_exchanges(server_id, exchanges)
+		await self.update_exchanges(server_id, exchanges)
 
 
-	def remove_exchanges(self, server_id: str, removed_exchanges: list) -> None:
-		exchanges = self.get_exchanges(server_id)
+	async def remove_exchanges(self, server_id: str, removed_exchanges: list) -> None:
+		exchanges = await self.get_exchanges(server_id)
 
 		if exchanges:
 			exchanges = [ex for ex in exchanges if ex not in removed_exchanges]
-			self.update_exchanges(server_id, exchanges)
+			await self.update_exchanges(server_id, exchanges)
 
 
-	def number_update_servers(self) -> int:
+	async def number_update_servers(self) -> int:
 		query = "SELECT Count(*) FROM servers WHERE output_channel IS NOT NULL"
 
-		self._cur.execute(query)
-		return self._cur.fetchone()[0]
+		async with self.pool.acquire() as conn:
+			async with conn.transaction():
+				res = await conn.fetchval(query)
+
+				return res
 
 
-	def servers_wanting_signals(self) -> list:
+	async def servers_wanting_signals(self) -> list:
 		query = """
 			SELECT id, name, output_channel, exchanges 
 			FROM servers WHERE output_channel IS NOT NULL
 			"""
 
-		self._cur.execute(query)
-		return self._cur.fetchall()
+		async with self.pool.acquire() as conn:
+			async with conn.transaction():
+				res = await conn.fetch(query)
+
+				return res

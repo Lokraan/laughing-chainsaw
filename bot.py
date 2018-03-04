@@ -1,8 +1,6 @@
 
-import logging.config
 import traceback
 import datetime
-import psycopg2
 import logging
 import asyncio
 import locale
@@ -18,14 +16,10 @@ import aiohttp
 sys.path.append("helpers/")
 
 import output_generator as og
-import exchange_processor
-import database
+from exchange_processor import ExchangeProcessor
+from database import ServerDatabase
 
-CONFIG_FILE = "config.json"
-LOGGING_CONFIG = "log_conf.yaml"
-
-
-class Bot:
+class Hasami:
 	"""
 	Bot used to analyze the bittrex and binance markets for significant price changes and
 	RSI values.
@@ -48,20 +42,18 @@ class Bot:
 	def __init__(self, client: discord.Client, logger: logging.Logger, config: dict, db=None):
 		self._client = client
 		self._logger = logger
-	
-		# config stuff
+		self._db = db
 
 		self._interval = config["update_interval"]
-		self._base_prefix = config["prefix"]
+		self._prefix = config["prefix"]
 
-		self._db = database.ServerDatabase("hasami", "hasami", "password")
-
-		self.mp = exchange_processor.Processor(self._logger, config, self._db)
+		self.exchange_processor = ExchangeProcessor(self._logger, config, self._db)
 
 		self._client.loop.create_task(self._set_playing_status())
 
-		self._client.loop.run_until_complete(self._initialize_checker())
 
+	async def start(self):
+		await self._initialize_checker()
 		self._client.loop.create_task(self.send_server_price_update_signals())
 		self._client.loop.create_task(self.send_server_rsi_update_signals())
 
@@ -72,7 +64,7 @@ class Bot:
 		while True:
 			await self._client.wait_until_ready()
 
-			data = await self.mp.get_crypto_mcap()
+			data = await self.exchange_processor.get_crypto_mcap()
 
 			mc = int(data["total_market_cap_usd"])
 			mc = locale.currency(mc, grouping=True)
@@ -98,14 +90,14 @@ class Bot:
 		server_id = message.server.id
 		server_name = message.server.name
 		
-		if not self._db.server_exists(server_id):
-			self._db.add_server(server_id, server_name, self._base_prefix)
+		if not await self._db.server_exists(server_id):
+			await self._db.add_server(server_id, server_name, self._base_prefix)
 
 		# load markets
-		await self.mp.load_exchanges(exchanges)
+		await self.exchange_processor.load_exchanges(exchanges)
 
-		self._db.update_output_channel(server_id, message.channel.id)
-		self._db.add_exchanges(server_id, exchanges)
+		await self._db.update_output_channel(server_id, message.channel.id)
+		await self._db.add_exchanges(server_id, exchanges)
 
 		text = "Added {0.server.name}-{0.channel} to rsi/update outputs and checking {1}"\
 			.format(message, exchanges)
@@ -114,19 +106,24 @@ class Bot:
 
 
 	async def _initialize_checker(self) -> None:
-		servers = self._db.servers_wanting_signals()
+		for server in self._client.servers:
+			if not await self._db.server_exists(server.id):
+				await self._db.add_server(server.id, server.name, self._prefix)
 
-		for server in servers:
-			print(server)
-			exchanges = server[3].split(" ")
-			self._logger.info("Loading exchanges {0}".format(exchanges))
-			await self.mp.load_exchanges(exchanges)
+			elif await self._db.get_output_channel(server.id):
+				exchanges = await self._db.get_exchanges(server.id)
+				self._logger.info("Loading exchanges {0}".format(exchanges))
+
+				await self.exchange_processor.load_exchanges(exchanges)
 
 
 	async def send_server_price_update_signals(self) -> None:
 		while True:
+			servers = await self._db.servers_wanting_signals()
+			if not servers: continue
 			try: 
-				async for channel, embed in self.mp.yield_exchange_price_updates():
+				data = self.exchange_processor.yield_exchange_price_updates(servers)
+				async for channel, embed in data:
 					channel = discord.Object(channel)
 					await self._client.send_message(channel, embed=embed)
 
@@ -139,8 +136,11 @@ class Bot:
 
 	async def send_server_rsi_update_signals(self) -> None:
 		while True:
+			servers = await self._db.servers_wanting_signals()
+			if not servers: continue
 			try:
-				async for channel, embed in self.mp.yield_exchange_rsi_updates():
+				data = self.exchange_processor.yield_exchange_rsi_updates(servers)
+				async for channel, embed in data:
 					channel = discord.Object(channel)
 					await self._client.send_message(channel, embed=embed)
 
@@ -173,19 +173,19 @@ class Bot:
 			message.channel, "Stopping {0.author.mention} !".format(message))
 
 		server_id = message.server.id
-		self._db.update_output_channel(server_id, None)
+		await self._db.update_output_channel(server_id, None)
 		
 		if len(exchanges) == 0:
 			text = "Removing {0.server.name}-{1} from update channels"\
 				.format(message, chan)
 
-			self._db.update_exchanges(server_id, None)
+			await self._db.update_exchanges(server_id, None)
 
 		else:
 			text = "Removing exchanges {2} from {0.server.name}-{1}"\
 				.format(message, chan, exchanges)
 
-			self._db.remove_exchanges(server_id, exchanges)
+			await self._db.remove_exchanges(server_id, exchanges)
 
 		self._logger.info(text)
 
@@ -196,19 +196,19 @@ class Bot:
 			if market == "":
 				continue
 
-			market = await self.mp.find_cmc_ticker(market)
+			market = await self.exchange_processor.find_cmc_ticker(market)
 
 			if not market:
 				continue
 
-			info = await self.mp.cmc_market_query(market)
+			info = await self.exchange_processor.cmc_market_query(market)
 			await self._client.send_message(
 				message.channel, embed=og.create_cmc_price_embed(info[0]))
 
 
 	async def crypto_cap(self, message: discord.Message) -> None:
 
-		info = await self.mp.get_crypto_mcap()
+		info = await self.exchange_processor.get_crypto_mcap()
 
 		await self._client.send_message(
 			message.channel, embed=og.create_cmc_cap_embed(info))
@@ -254,14 +254,7 @@ class Bot:
 
 
 	async def change_prefix(self, message: discord.Message, params: list) -> None:
-		self._db.update_prefix(message.server.id, params[0])
+		await self._db.update_prefix(message.server.id, params[0])
 
 		text = "Changed {0.author.mention} prefix to {1}".format(message, params[0])
 		await self._client.send_message(message.channel, text)
-
-
-	def joined_server(server):
-		self._logger.info("Joined {0}".format(server.name))
-
-		self._db.add_server(server.id, server.name, self._base_prefix)
-

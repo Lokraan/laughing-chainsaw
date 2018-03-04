@@ -15,15 +15,17 @@ class CommandProcessor:
 
 		content = message.content
 
-		prefix = self._db.get_prefix(message.server.id)
+		prefix = await self._db.get_prefix(message.server.id)
+
+		if prefix == None:
+			pass
 
 		if content.startswith(prefix):
 			content = content.strip(prefix)
 
-			regex = "\\s+|,?"
+			regex = ",?\\s+|,"
 
 			content_split = re.split(regex, content)
-
 			cmd = content_split[0]
 			params = content_split[1:]
 

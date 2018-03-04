@@ -14,7 +14,7 @@ sys.path.append("helpers/indicators/")
 from rsi import calc_rsi
 
 
-class Processor:
+class ExchangeProcessor:
 	def __init__(self, logger, config, db):
 		self._logger = logger
 
@@ -181,20 +181,19 @@ class Processor:
 		return embeds
 
 
-	async def yield_exchange_price_updates(self) -> None:
-		servers = self._db.servers_wanting_signals()
-
+	async def yield_exchange_price_updates(self, servers) -> None:
 		processed_exchanges = {}
 
 		self._logger.debug("Yielding exchange rsi updates for servers {0}".format(servers))
-
 		for server in servers:
 
-			server_id = server[0]
-			server_name = server[1]
+			server_id = server["id"]
+			server_name = server["name"]
 
-			channel = server[2]
-			exchanges = server[3].split(" ")
+			channel = server["output_channel"]
+			exchanges = server["exchanges"]
+
+			if exchanges == None: continue
 
 			outputs = []
 
@@ -228,20 +227,20 @@ class Processor:
 				yield [channel, embeds]
 
 
-	async def yield_exchange_rsi_updates(self) -> None:
-		servers = self._db.servers_wanting_signals()
-
+	async def yield_exchange_rsi_updates(self, servers) -> None:
 		processed_exchanges = {}
 
 		self._logger.debug("Yielding exchange rsi updates for servers {0}".format(servers))
 
 		for server in servers:
 
-			server_id = server[0]
-			server_name = server[1]
+			server_id = server["id"]
+			server_name = server["name"]
 
-			channel = server[2]
-			exchanges = server[3].split(" ")
+			channel = server["output_channel"]
+			exchanges = server["exchanges"]
+
+			if exchanges == None: continue
 
 			outputs = []
 
