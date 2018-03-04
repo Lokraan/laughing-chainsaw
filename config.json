@@ -1,7 +1,7 @@
 {
-    "token": "MzkyNTM0MzIyODk0MzQwMDk2.DW5o9w.TnyY-JxUJh7PDi8r1skNyelc9Qw",
-	"free_fall": -1,
-	"mooning": 1,
+	"token": "MzkyNTM0MzIyODk0MzQwMDk2.DX0drQ.NoYykAjzXqsNWsi2VzyNbrqz3gk",
+	"free_fall": -5,
+	"mooning": 5,
 	"rsi_timeframe": "thirtyMin",
 	"rsi_period": 14, 
 	"over_bought": 75,
@@ -11,5 +11,6 @@
 	"prefix": "$",
 	"dbname": "hasami",
 	"dbuser": "hasami",
-	"dbpass": "password"
+	"dbpass": "password",
+	"dbhost": "localhost"
 }

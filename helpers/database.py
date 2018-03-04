@@ -4,9 +4,10 @@ import asyncpg
 import re
 
 class ServerDatabase:
-	def __init__(self, database, user, password=None):
+	def __init__(self, database, user, host, password=None):
 		self._database = database
 		self._user = user
+		self._host = host
 		self._password = password
 
 		loop = asyncio.get_event_loop()
@@ -15,7 +16,8 @@ class ServerDatabase:
 
 	async def create_db(self):
 		conn = await asyncpg.connect(
-			database=self._database, user=self._user, password=self._password
+			database=self._database, user=self._user,
+			password=self._password, host=self._host
 			)
 
 		await conn.execute(

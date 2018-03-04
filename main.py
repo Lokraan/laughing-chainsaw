@@ -53,7 +53,8 @@ if __name__ == '__main__':
 
 	logger = logging.getLogger()
 
-	db = database.ServerDatabase(config["dbuser"], config["dbname"], config["dbpass"])
+	db = database.ServerDatabase(config["dbuser"], config["dbname"], 
+		config["dbhost"], config["dbpass"])
 
 	bot = Hasami(client=client, logger=logging.getLogger("bot"), config=config, db=db)
 	command_processor = CommandProcessor(bot, logger, db)
