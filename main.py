@@ -76,6 +76,6 @@ if __name__ == '__main__':
 		self._logger.info("Joined {0}".format(server.name))
 		db.add_server(server.id, server.name, config["prefix"])	
 
-	# start
+
 	token = config["token"]
 	client.run(token)

@@ -1,6 +1,5 @@
 
 import traceback
-import datetime
 import logging
 import asyncio
 import locale
@@ -124,6 +123,7 @@ class Hasami:
 			try: 
 				data = self.exchange_processor.yield_exchange_price_updates(servers)
 				async for channel, embed in data:
+					await self._client.wait_until_ready()
 					channel = discord.Object(channel)
 					await self._client.send_message(channel, embed=embed)
 
@@ -141,6 +141,7 @@ class Hasami:
 			try:
 				data = self.exchange_processor.yield_exchange_rsi_updates(servers)
 				async for channel, embed in data:
+					await self._client.wait_until_ready()
 					channel = discord.Object(channel)
 					await self._client.send_message(channel, embed=embed)
 

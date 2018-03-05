@@ -35,7 +35,9 @@ class ServerDatabase:
 		await conn.close()
 
 		self.pool = await asyncpg.create_pool(
-			database=self._database, user=self._user, password=self._password)
+			database=self._database, user=self._user, 
+			host=self._host, password=self._password
+			)
 
 
 	async def get_server(self, server_id: str) -> list:

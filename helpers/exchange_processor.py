@@ -32,11 +32,11 @@ class ExchangeProcessor:
 		self._significant_markets = set()
 
 		self._aretry = tenacity.AsyncRetrying(
-			wait=tenacity.wait_exponential(),
+			wait=tenacity.wait_random(0, 2),
 			retry=(
 				tenacity.retry_if_exception(ccxt.DDoSProtection) | 
 				tenacity.retry_if_exception(ccxt.RequestTimeout) |
-				tenacity.retry_if_exception(aiohttp.errors.ServerDisconnectedError)
+				tenacity.retry_if_exception(aiohttp.ServerDisconnectedError)
 				)
 			)
 
@@ -51,11 +51,13 @@ class ExchangeProcessor:
 	async def _fetch_all_tickers(self, exchange: ccxt.Exchange) -> list:
 		await self._aretry.call(exchange.load_markets)
 
+		tasks = [
+				self._aretry.call(exchange.fetch_ticker, symbol)
+				for symbol in exchange.symbols
+			]
+
 		# gathers tickers in parallel 
-		tickers = await asyncio.gather(*[
-			self._aretry.call(exchange.fetch_ticker, symbol)
-			for symbol in exchange.symbols
-			])
+		tickers = await asyncio.gather(*tasks, return_exceptions=True)
 
 		return tickers
 
@@ -127,29 +129,32 @@ class ExchangeProcessor:
 
 	async def _acalc_rsi(self, exchange, symbol, since) -> int:
 		data = await self._aretry.call(
-			exchange.fetch_ohlcv, symbol, self._rsi_timeframe, since.timestamp()
+			exchange.fetch_ohlcv, symbol, self._rsi_timeframe, since
 			)
 
-		return {symbol: calc_rsi(data, self._rsi_period)}
+		return (symbol, calc_rsi(data, self._rsi_period))
 
 
 	async def check_exchange_rsi_updates(self, exchange: ccxt.Exchange) -> tuple:
 		if not exchange.has['fetchOHLCV']: return {}
 
-		old_prices = self._exchange_market_prices[exchange.id]
 		rsi_updates = {}
 
 		await self._aretry.call(exchange.load_markets)
 
-		since = datetime.now() - timedelta(days=500)
+		since = datetime.now() - timedelta(minutes=30*500)
+		since = since.timestamp() * 1000
 
-		rsi_data = await asyncio.gather(*[
-			self._acalc_rsi(exchange, symbol, since)
-			for symbol in exchange.symbols
-			])
+		tasks = [
+				self._acalc_rsi(exchange, symbol, since) 
+				for symbol in exchange.symbols
+			]
 
-		for symbol, rsi in rsi_data.items():
-			if rsi >= self._over_sold or rsi <= self._over_sold:
+		rsi_data = await asyncio.gather(*tasks, return_exceptions=True)
+
+		for data in rsi_data:
+			symbol, rsi = data
+			if rsi <= self._over_sold or rsi >= self._over_bought:
 				if symbol not in self._significant_markets:
 					rsi_updates[symbol] = rsi
 					self._significant_markets.add(symbol)
@@ -159,28 +164,7 @@ class ExchangeProcessor:
 
 		return rsi_updates
 
-
-	async def process_exchanges(self, exchanges: list) -> dict:
-		embeds = {}
-		for exchange in exchanges:
-			exchange = self._get_exchange(exchange)
-
-			if not exchange: continue
-
-			outputs = []
-			price_updates, rsi_updates = await self.check_exchange(exchange)
-
-			if price_updates:
-				outputs.append(og.create_price_update_embed(price_updates))
-
-			if rsi_updates:
-				outputs.append(og.create_rsi_update_embed(rsi_updates))
-
-			embeds[exchange.id] = outputs
-
-		return embeds
-
-
+	
 	async def yield_exchange_price_updates(self, servers) -> None:
 		processed_exchanges = {}
 
@@ -215,16 +199,16 @@ class ExchangeProcessor:
 
 						self._logger.debug("Price Updates: {0}".format(updates))
 						if updates:
-							embeds = og.create_price_update_embed(updates)
+							embed = og.create_price_update_embed(updates)
 
-							processed_exchanges[exchange] = embeds
-							outputs.append(embeds)
+							processed_exchanges[exchange] = embed
+							outputs.append(embed)
 						
 			self._logger.debug(outputs)
 
 			# prob can re write this and keep it inside exchange filtering loop
 			for embed in outputs:
-				yield [channel, embeds]
+				yield [channel, embed]
 
 
 	async def yield_exchange_rsi_updates(self, servers) -> None:
@@ -261,17 +245,17 @@ class ExchangeProcessor:
 
 						self._logger.debug("RSI Updates: {0}".format(updates))
 
-						if updates:	
+						if updates:
 							embed = og.create_rsi_update_embed(updates)
 
 							processed_exchanges[exchange] = embed
-							outputs.append(embeds)
+							outputs.append(embed)
 						
 			self._logger.debug(outputs)
 
 			# prob can re write this and keep it inside exchange filtering loop
 			for embed in outputs:
-				yield [channel, embeds]
+				yield [channel, embed]
 
 
 
