@@ -30,7 +30,7 @@ After you've done this you'll need to put your database auth info into the confi
 
 ### Commands
 | Command  | Description|
-| :------: | ---------- |
+| ------ | ---------- |
 | `$start <exchanges>`  | Starts checking the exchanges for price/rsi updates in the channel the message was sent. *Uses bittrex by default*| 
 | `$stop <exchanges>`   | Stops checking the exchanges for price/rsi updates in the channel the message was sent.  *Uses bittrex by default*| 
 | `$prefix <prefix>`    | Sets the prefix for the current server to the prefix specified. *Only works for users with admin privileges*      |
@@ -53,6 +53,8 @@ After you've done this you'll need to put your database auth info into the confi
 
 ### Configuration
 All configuration takes place within [config.json](/config.json)
+
+```json
 {
 	"token": "your token",
 	"free_fall": -5,
@@ -69,10 +71,10 @@ All configuration takes place within [config.json](/config.json)
 	"dbpass": "your password",
 	"dbhost": "localhost"
 }
-
+```
 
 | Option  | Description | 
-| :-----: | ----------- | 
+| ----- | ----------- | 
 | `token`     | The bot's token to use to create connection with discord | 
 | `free_fall` | Low value to flag market for printing **(Price Change)**|
 | `mooning`   | High value to flag market for printing **(Price Change)** |
