@@ -21,11 +21,12 @@ class CommandProcessor:
 			pass
 
 		if content.startswith(prefix):
-			content = content.strip(prefix)
+			content = content.replace(prefix, "", 1)
 
 			regex = ",?\\s+|,"
 
 			content_split = re.split(regex, content)
+
 			cmd = content_split[0]
 			params = content_split[1:]
 

@@ -1,10 +1,10 @@
 {
-	"token": "your token",
+	"token": "your token here",
 	"free_fall": -5,
 	"mooning": 5,
 	"rsi_timeframe": "30m",
 	"rsi_period": 14, 
-	"over_bought": 70,
+	"over_bought": 80,
 	"over_sold": 30,
 	"update_interval": 1,
 	"debug": false,

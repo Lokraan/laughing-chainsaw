@@ -114,7 +114,15 @@ class ExchangeProcessor:
 		tickers = await self._fetch_all_tickers(exchange)
 
 		for ticker in tickers:
+			
 			symbol = ticker["symbol"]
+			
+			if symbol not in old_prices:
+				old_prices[symbol] = ticker["last"]
+
+				self._exchange_market_prices[exchange.id] = old_prices
+				continue # price hasn't changed since we just got it
+
 			new_price = ticker["last"]
 			old_price = old_prices[symbol]
 
