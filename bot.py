@@ -232,27 +232,8 @@ class Hasami:
 			)
 
 
-	async def exit(self, message: discord.Message) -> None:
-		"""
-		Shutsdown the bot, logs it, and notifies user who called for it of the exit
-
-		Args:
-			message: Discord message used to call for exit.
-
-		Returns:
-			None
-
-		"""
-
-		await self._client.send_message(
-			message.channel, "Bye {0.author.mention}!".format(message)
-			)
-		sys.exit()
-
-
 	async def source(self, message: discord.Message) -> None:
 		await self._client.send_message(message.channel, "https://github.com/lokraan/hasami")
-
 
 	async def change_prefix(self, message: discord.Message, params: list) -> None:
 		await self._db.update_prefix(message.server.id, params[0])

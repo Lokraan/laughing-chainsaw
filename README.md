@@ -1,73 +1,93 @@
 # Hasami
-Hasami is a discord bot that monitors bittrex and binance exchanges for significant changes in price / significant RSI values and prints it out in a specified channel.
+Hasami is a discord bot that provides...
+- Notifications for significant price changes and RSI values.
+- Information for the cryptocurrency market as a whole or individual cryptocurrencies.
+- Dynamic prefixes.
 
-It also prints out the market cap of the entire crypto market and market information into nicely formatted discord embeds upon request. (Data from coinmarketcap.)
 
 ## Adding the bot to your server
-I currently host the bot 24/7 on a vps and you're free to add it to your discord server if you'd like. To enable price/rsi updates just type `$start` in the desired channel and it will starts sending price/rsi updates to the channel. To stop it type, `$stop`.
+Hasami is currently hosted 24/7 on a vps--[vultr](https://www.vultr.com/?ref=7308111)--and you're more than welcome to use it instead of hosting it yourself. All commands work as specified in the commands section.
 
-https://discordapp.com/oauth2/authorize?client_id=392534322894340096&scope=bot
+[Invite Bot](https://discordapp.com/oauth2/authorize?client_id=392534322894340096&scope=bot)
+
+If you have any questions feel free to contact me on discord; my username is **Lokraan#3797**
 
 
 ## Hosting it yourself.
-For basic personal use you need to set `"token"` to your personal bot's token, and `"update_channel"` to the channel the bot should print updates to in [config.json](/config.json)
+For basic personal use you need to set `"token"` to your personal bot's token in [config.json](/config.json). You will also need to install and set up a database for the bot using postgresql on your computer. 
+[this](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-postgresql-on-ubuntu-16-04) is a nice tutorial by digital ocean that walks you through the process. 
 
-It is not necessary to include the update channel, as typing `$start` uses the current channel for price/rsi updates and `$stop` removes it.
+After you've done this you'll need to put your database auth info into the config.
+
 
 ```json
 "token": "your token",
-"update_channel": "your channel id",
+"dbname": "your database",
+"dbuser": "your user",
+"dbpass": "your password",
+"dbhost": "localhost"
 ```
 
 ### Commands
-| Command | Description |
-| --- | --- |
-| `$start` | Starts checking the markets for price/rsi updates in the channel the message was sent. | 
-| `$stop` | Stops checking the markets for price/rsi updates in the channel the message was sent. | 
-| `$exit` | Shuts down the bot. |
-| `$greet` | Greets whoever wants to be greeted. |
-| `$price` | Gets market data for currency specified after, ie `$price eth` |
-| `$cap` | Gets the marketcap of cryptocurrencies as a whole. |
+| Command  | Description|
+| :------: | ---------- |
+| `$start <exchanges>`  | Starts checking the exchanges for price/rsi updates in the channel the message was sent. *Uses bittrex by default*| 
+| `$stop <exchanges>`   | Stops checking the exchanges for price/rsi updates in the channel the message was sent.  *Uses bittrex by default*| 
+| `$prefix <prefix>`    | Sets the prefix for the current server to the prefix specified. *Only works for users with admin privileges*      |
+| `$price`  | Gets market data for currency specified after, ie `$price eth` |
+| `$cap`    | Gets the marketcap of cryptocurrencies as a whole.             |
+| `$help`   | Private messages user bot commands and github.                 |
+| `$greet`  | Greets whoever wants to be greeted. |
+| `$source` | Prints the link to this repository. |
+
 
 ### Requirements
 - Python >= 3.5.3
+- [tenacity](https://github.com/jd/tenacity) (pip install tenacity)
 - [discord](https://github.com/Rapptz/discord.py) (pip install discord)
-- [aiohttp](https://github.com/aio-libs/aiohttp) (pip install aiohttp) 
+- [asyncpg](https://github.com/MagicStack/asyncpg) (pig install asyncpg)
+- [aiohttp](https://github.com/aio-libs/aiohttp) (pip install aiohttp)
 - [pyyaml](https://github.com/yaml/pyyaml) (pip install pyyaml)
+- [ccxt](https://github.com/ccxt/ccxt) (pip install ccxt)
 
 
 ### Configuration
 All configuration takes place within [config.json](/config.json)
-
-```json
 {
 	"token": "your token",
-	"update_channel": "your channel id",
-	"free_fall": -4,
-	"mooning": 4,
-	"rsi_tick_interval": "thirtyMin",
-	"rsi_time_frame": 14, 
-	"over_bought": 75,
-	"over_sold": 25,
+	"free_fall": -5,
+	"mooning": 5,
+	"rsi_timeframe": "30m",
+	"rsi_period": 14, 
+	"over_bought": 80,
+	"over_sold": 30,
 	"update_interval": 1,
-	"debug": 0,
-	"command_prefix": "$"
+	"debug": false,
+	"prefix": "$",
+	"dbname": "your database",
+	"dbuser": "your user",
+	"dbpass": "your password",
+	"dbhost": "localhost"
 }
-```
 
-| Option | Description | 
-| --- | --- | 
-| `token` | The bot's token to use to create connection with discord | 
-| `update_channel` | The channel the bot will print updates to |
+
+| Option  | Description | 
+| :-----: | ----------- | 
+| `token`     | The bot's token to use to create connection with discord | 
 | `free_fall` | Low value to flag market for printing **(Price Change)**|
-| `mooning` | High value to flag market for printing **(Price Change)** |
-| `rsi_tick_interval` | Interval between each tick used to calculate **(RSI)** [Options](https://github.com/thebotguys/golang-bittrex-api/wiki/Bittrex-API-Reference-(Unofficial)#getticks): "oneMin", "fiveMin", "thirtyMin", "hour", "day".  |
-| `rsi_time_frame` | Number of ticks to use to calculate **(RSI)** |
+| `mooning`   | High value to flag market for printing **(Price Change)** |
+| `rsi_timeframe`  | Interval between each tick used to calculate **RSI** |
+| `rsi_period`  | Period used when calculating RSI **(RSI)** |
 | `over_bought` | Over bought value to flag market for printing **(RSI)** |
-| `over_sold` | Over sold value to flag market for printing **(RSI)** | 
+| `over_sold`   | Over sold value to flag market for printing **(RSI)** | 
 | `update_interval` | Delay between each time it checks the markets (in minutes) |
-| `debug` | Whether in debug mode or not. Increases info logged. |
-| `command_prefix` | Prefix used to specify a command to a bot. |
+| `debug`           | Whether in debug mode or not. Increases info logged. |
+| `prefix` | Default prefix used to specify a command to a bot. |
+| `dbname` | Postgresql database to connect to. |
+| `dbuser` | Postgresql user to use when connecting. | 
+| `dbpass` | Password for database user. |
+| `dbhost` | Host database is being hosted on. |
+
 
 ### What it's doing
 When a market's growth/decline is greater than or equal to `mooning` or `free_fall`, the bot flags it and prints an update according to this format.
@@ -81,5 +101,6 @@ When a market's rsi value is greater than or equal to `over_bought` or `over_sol
 ```
 
 ## TODO
-1. Support for more exchanges.
-
+1. Debugging
+2. Configurable RSI timeframes.
+3. Administrative tools and metrics.

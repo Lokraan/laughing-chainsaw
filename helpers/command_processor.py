@@ -5,12 +5,21 @@ import re
 
 
 class CommandProcessor:
-	def __init__(self, bot, logger, db):
+	def __init__(self, client, bot, logger, db):
+		self._client = client
 		self._logger = logger
 		self._bot = bot
 		self._db = db
 
-	async def process_message(self, message: discord.Message):
+
+	def is_admin(self, message: discord.Message) -> bool:
+		chann = message.channel
+		permissions = chann.permissions_for(user)
+
+		return premissions.administrator
+
+
+	async def process_message(self, message: discord.Message) -> None:
 		# Default greet
 
 		content = message.content
@@ -32,11 +41,26 @@ class CommandProcessor:
 
 			if cmd == "greet":
 				self._logger.info("Greeted {0.author}".format(message))	
-				await self._bot.greet(message)
+				await self._client.send_message(
+					message.channel, "Hello {0.author.mention} !".format(message))
 
 			elif cmd == "help":
+				help_message = """
+					| Command  | Description|
+					| :------: | ---------- |
+					| `$start <exchanges>`  | Starts checking the exchanges for price/rsi updates in the channel the message was sent. *Uses bittrex by default*| 
+					| `$stop <exchanges>`   | Stops checking the exchanges for price/rsi updates in the channel the message was sent.  *Uses bittrex by default*| 
+					| `$prefix <prefix>`    | Sets the prefix for the current server to the prefix specified. *Only works for users with admin privileges*      |
+					| `$price`  | Gets market data for currency specified after, ie `$price eth` |
+					| `$cap`    | Gets the marketcap of cryptocurrencies as a whole.             |
+					| `$help`   | Private messages user bot commands and github .                |
+					| `$greet`  | Greets whoever wants to be greeted. |
+					| `$source` | Prints the link to this repository. |	
+					https://github.com/lokraan/hasami
+				"""
+				
 				self._logger.info("Helped {0.author}".format(message))
-				await self._bot.help(message)
+				await self._client.send_message(message.author, help_message)
 
 			elif cmd == "start":
 				text = "{0.author} asked to start checking exchanges {1}".format(message, params)
@@ -60,17 +84,12 @@ class CommandProcessor:
 				await self._bot.crypto_cap(message)
 
 			elif cmd == "source":
-				await self._bot.source(message)
+				await self._client.send_message(message.channel, 
+					"https://github.com/lokraan/hasami")
 
 			elif cmd == "prefix":
-				user = message.author
-				
-				chann = message.channel
-				permissions = chann.permissions_for(user)
-
-				if permissions.administrator:
-					if len(params) > 0:
-						await self._bot.change_prefix(message, params)
+				if self.is_admin(message) and len(params) > 0:
+					await self._bot.change_prefix(message, params)
 
 			elif cmd in ccxt.exchanges:
 				await self._bot.price(message, markets, exchange=getattr(ccxt, exchange))
