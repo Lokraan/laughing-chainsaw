@@ -133,7 +133,7 @@ def create_cmc_price_embed(info: dict) -> discord.Embed:
 	n2 = info["id"]
 
 	color = 0x21ff3b if float(info["percent_change_24h"]) >= 0 else 0xff0000
-	img_url = "https://files.coinmarketcap.com/static/widget/coins_legacy/64x64/{}.png".format(n2)
+	img_url = "https://files.coinmarketcap.com/static/widget/coins_legacy/32x32/{}.png".format(n2)
 
 	embed = discord.Embed(
 		title=n, url="https://coinmarketcap.com/currencies/{}/".format(n2), colour=color
@@ -185,7 +185,7 @@ def create_cmc_cap_embed(info: dict) -> discord.Embed:
 		)
 
 	embed.set_thumbnail(
-		url="https://files.coinmarketcap.com/static/widget/coins_legacy/64x64/dollar-online.png"
+		url="https://files.coinmarketcap.com/static/widget/coins_legacy/32x32/dollar-online.png"
 		)
 
 	mc = locale.currency(float(info["total_market_cap_usd"]), grouping=True)

@@ -3,6 +3,7 @@ import discord
 import ccxt
 import re
 
+from exchange_processor import ExchangeProcessor
 
 class MessageProcessor:
 	"""
@@ -20,6 +21,8 @@ class MessageProcessor:
 		self._logger = logger
 		self._bot = bot
 		self._db = db
+
+		self._ep = ExchangeProcessor(logger=self._logger)
 
 
 	def is_admin(self, message: discord.Message) -> bool:
@@ -133,3 +136,6 @@ class MessageProcessor:
 
 			elif cmd in ccxt.exchanges:
 				await self._bot.price(message, markets, exchange=getattr(ccxt, exchange))
+
+			elif await self._ep.find_cmc_ticker(cmd):
+				await self._bot.price(message, [cmd])

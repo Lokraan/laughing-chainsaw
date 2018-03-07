@@ -15,16 +15,17 @@ from rsi import calc_rsi
 
 
 class ExchangeProcessor:
-	def __init__(self, logger, config, db):
+	def __init__(self, logger=None, config=None, db=None):
 		self._logger = logger
 
-		self._rsi_timeframe = config["rsi_timeframe"]
-		self._interval = config["update_interval"]
-		self._over_bought = config["over_bought"]
-		self._rsi_period = config["rsi_period"]
-		self._free_fall = config["free_fall"]
-		self._over_sold = config["over_sold"]
-		self._mooning = config["mooning"]
+		if config:
+			self._rsi_timeframe = config["rsi_timeframe"]
+			self._interval = config["update_interval"]
+			self._over_bought = config["over_bought"]
+			self._rsi_period = config["rsi_period"]
+			self._free_fall = config["free_fall"]
+			self._over_sold = config["over_sold"]
+			self._mooning = config["mooning"]
 
 		self._db = db
 
@@ -254,7 +255,6 @@ class ExchangeProcessor:
 				elif self._get_exchange(exchange):
 					ccxt_exchange = self._get_exchange(exchange)
 					if ccxt_exchange:
-						print(ccxt_exchange.id)
 						updates = await self.check_exchange_price_updates(
 							ccxt_exchange)
 

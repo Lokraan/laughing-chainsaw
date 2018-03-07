@@ -57,7 +57,7 @@ if __name__ == '__main__':
 		config["dbhost"], config["dbpass"])
 
 	bot = Hasami(client=client, logger=logging.getLogger("bot"), config=config, db=db)
-	command_processor = CommandProcessor(client, bot, logger, db)
+	command_processor = MessageProcessor(client, bot, logger, db)
 
 	# client events
 	@client.event
