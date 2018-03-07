@@ -7,30 +7,48 @@ import locale
 
 
 def get_output(*items: list) -> str:
-		"""
-		Creates a discord.Embed friendly formatting and returns it.
+	"""
+	Creates a discord.Embed friendly formatting and returns it.
 
-		Args:
-			*items: Items to concatonate together into one output.
+	Args:
+		*items: Items to concatonate together into one output.
 
-		Returns:
-			Discord friendly text !
+	Returns:
+		Discord friendly text !
 
-		"""
+	"""
 
-		return " ".join(*items)
+	return " ".join(*items)
 
 
 def get_color() -> hex:
-		r = lambda: random.randint(0, 255)
-		
-		color = (r(), r(), r())
-		color = (int("0x%02x%02x%02x" % color, 16))
-		
-		return color
+	"""
+	Generates  a random hexadecimal color and returns it
+
+
+	Returns:
+		hexadecimal color
+
+	"""
+	r = lambda: random.randint(0, 255)
+	
+	color = (r(), r(), r())
+	color = (int("0x%02x%02x%02x" % color, 16))
+	
+	return color
 
 
 def create_rsi_update_embed(data: dict) -> discord.Embed:
+	"""
+	Creates a discord embed for rsi signals.
+
+	Args:
+		data: information about rsi and their symbols
+
+	Returns:
+		embed containing the data passed in
+
+	"""
 	out = ""
 
 	for symbol, rsi in data.items():
@@ -40,6 +58,16 @@ def create_rsi_update_embed(data: dict) -> discord.Embed:
 
 
 def create_price_update_embed(data: dict) -> discord.Embed:
+	"""
+	Creates a discord embed for price updates.
+
+	Args:
+		data: information about price updates and their symbols
+
+	Returns:
+		embed containing the data passed in
+
+	"""
 	out = ""
 
 	for symbol, change in data.items():
@@ -88,14 +116,24 @@ def create_embed(title: str, text: str, discord_mark_up: str = None,
 
 
 def create_cmc_price_embed(info: dict) -> discord.Embed:
+	"""
+	Creates an embed for cmc info for crypto. Consists of the price in btc and usd,
+	marketcap and change for past hour, day, and week.
 
+	Args:
+		info: info used to generate embed.
+
+	Returns:
+		discord embed of information
+
+	"""	
 	locale.setlocale(locale.LC_ALL, "")
 
 	n = info["name"]
 	n2 = info["id"]
 
 	color = 0x21ff3b if float(info["percent_change_24h"]) >= 0 else 0xff0000
-	img_url = "https://files.coinmarketcap.com/static/img/coins/32x32/{}.png".format(n2)
+	img_url = "https://files.coinmarketcap.com/static/widget/coins_legacy/64x64/{}.png".format(n2)
 
 	embed = discord.Embed(
 		title=n, url="https://coinmarketcap.com/currencies/{}/".format(n2), colour=color
@@ -129,27 +167,37 @@ def create_cmc_price_embed(info: dict) -> discord.Embed:
 
 
 def create_cmc_cap_embed(info: dict) -> discord.Embed:
-		locale.setlocale(locale.LC_ALL, "")
+	"""
+	Creates an embed for the current crpyotcurrency market cap.
 
-		embed = discord.Embed(
-				title="Crypto Market Cap", url="https://coinmarketcap.com/charts/",
-				colour=0xc43aff
-				)
+	Args:
+		info: data used to get information
 
-		embed.set_thumbnail(
-				url="https://files.coinmarketcap.com/static/img/coins/32x32/dollar-online.png"
-				)
+	Returns:
+		discord embed fo the current market cap
 
-		mc = locale.currency(float(info["total_market_cap_usd"]), grouping=True)
-		embed.add_field(name="Total USD", value=mc, inline=True)
+	"""
+	locale.setlocale(locale.LC_ALL, "")
 
-		mc = locale.currency(float(info["total_24h_volume_usd"]), grouping=True)
-		embed.add_field(name="24h Volume USD", value=mc+"\n\u200b", inline=True)
-		
-		mc = "{}%".format(info["bitcoin_percentage_of_market_cap"])
-		embed.add_field(name="Bitcoin Dominance", value=mc, inline=True)
+	embed = discord.Embed(
+		title="Crypto Market Cap", url="https://coinmarketcap.com/charts/",
+		colour=0xc43aff
+		)
 
-		mc = info["active_currencies"]
-		embed.add_field(name="Active Currencies", value=mc, inline=True)
-		
-		return embed
+	embed.set_thumbnail(
+		url="https://files.coinmarketcap.com/static/widget/coins_legacy/64x64/dollar-online.png"
+		)
+
+	mc = locale.currency(float(info["total_market_cap_usd"]), grouping=True)
+	embed.add_field(name="Total USD", value=mc, inline=True)
+
+	mc = locale.currency(float(info["total_24h_volume_usd"]), grouping=True)
+	embed.add_field(name="24h Volume USD", value=mc+"\n\u200b", inline=True)
+	
+	mc = "{}%".format(info["bitcoin_percentage_of_market_cap"])
+	embed.add_field(name="Bitcoin Dominance", value=mc, inline=True)
+
+	mc = info["active_currencies"]
+	embed.add_field(name="Active Currencies", value=mc, inline=True)
+	
+	return embed

@@ -42,6 +42,9 @@ class ExchangeProcessor:
 
 
 	def _get_exchange(self, exchange: str) -> ccxt.Exchange:
+		"""
+		Gets exchange from ccxt if ccxt accepts it, else returns none.
+		"""
 		if exchange in ccxt.exchanges:
 			return getattr(ccxt, exchange)()
 
@@ -49,6 +52,9 @@ class ExchangeProcessor:
 
 
 	async def _fetch_all_tickers(self, exchange: ccxt.Exchange) -> list:
+		"""
+		Asynchronously fetches all tickers from exchange and returns them.
+		"""
 		await self._aretry.call(exchange.load_markets)
 
 		tasks = [
@@ -106,7 +112,18 @@ class ExchangeProcessor:
 		return round(((new_price - old_price) / old_price) * 100, 2)
 
 
-	async def check_exchange_price_updates(self, exchange: ccxt.Exchange) -> tuple:
+	async def check_exchange_price_updates(self, exchange: ccxt.Exchange) -> dict:
+		"""
+		Checks exchange tickers to see if there has been a significant change.
+		If there has been it adds it to a dict to be returned.
+
+		Args:
+			exchange: exchange to be checked
+
+		Returns:
+			a dict of all the updates and their corresponding symbols
+
+		"""
 		price_updates = {}
 
 		old_prices = self._exchange_market_prices[exchange.id]
@@ -135,7 +152,21 @@ class ExchangeProcessor:
 		return price_updates
 
 
-	async def _acalc_rsi(self, exchange, symbol, since) -> int:
+	async def _acalc_rsi(self, exchange, symbol, since) -> tuple:
+		"""
+		Astnchronously downloads the data to calculate the rsi and then calculates it.
+		This allows the whole process to be wrapped into a future to be used with
+		asyncio.gather
+
+		Args:
+			exchange: exchange from which the data is to be retrieved from
+			symbol: symbol the rsi is to be calculated of
+			since: from when the rsi is to be calculated
+
+		Returns:
+			A tuple of the symbol and corresponding rsi value.
+
+		"""
 		data = await self._aretry.call(
 			exchange.fetch_ohlcv, symbol, self._rsi_timeframe, since
 			)
@@ -143,7 +174,18 @@ class ExchangeProcessor:
 		return (symbol, calc_rsi(data, self._rsi_period))
 
 
-	async def check_exchange_rsi_updates(self, exchange: ccxt.Exchange) -> tuple:
+	async def check_exchange_rsi_updates(self, exchange: ccxt.Exchange) -> dict:
+		"""
+		Checks exchange tickers to see if there has been a significant rsi.
+		If there has been it adds it to a dict to be returned.
+
+		Args:
+			exchange: exchange to be checked
+
+		Returns:
+			a dict of all the updates and their corresponding symbols
+
+		"""
 		if not exchange.has['fetchOHLCV']: return {}
 
 		rsi_updates = {}
@@ -174,6 +216,17 @@ class ExchangeProcessor:
 
 	
 	async def yield_exchange_price_updates(self, servers) -> None:
+		"""
+		Checks for price updates in all of the exchanges the server wants checked.
+		Then wraps the updates into an embed for output.
+
+		Args:
+			server: server that wants exchange signals
+
+		Returns:
+			a tuple of channel and embed
+
+		"""
 		processed_exchanges = {}
 
 		self._logger.debug("Yielding exchange rsi updates for servers {0}".format(servers))
@@ -220,6 +273,17 @@ class ExchangeProcessor:
 
 
 	async def yield_exchange_rsi_updates(self, servers) -> None:
+		"""
+		Checks for significant rsi values in all of the exchanges the server wants checked.
+		Then wraps the updates into an embed for output.
+
+		Args:
+			server: server that wants exchange signals
+
+		Returns:
+			a tuple of channel and embed
+
+		"""
 		processed_exchanges = {}
 
 		self._logger.debug("Yielding exchange rsi updates for servers {0}".format(servers))
@@ -304,6 +368,13 @@ class ExchangeProcessor:
 
 
 	async def get_crypto_mcap(self) -> dict:
+		"""
+		Gets current market information.
+
+		Returns:
+			Current market information
+
+		"""
 		url = "https://api.coinmarketcap.com/v1/global/"
 
 
@@ -312,6 +383,13 @@ class ExchangeProcessor:
 
 
 	async def get_cmc_tickers(self) -> list:
+		"""
+		Gets all tickers from cmc
+
+		Returns:
+			a list of all the tickers
+
+		"""
 		url = "https://api.coinmarketcap.com/v1/ticker/?limit=0"
 
 		self._logger.debug("Getting cmc tickers")
@@ -320,7 +398,16 @@ class ExchangeProcessor:
 
 
 	async def find_cmc_ticker(self, ticker) -> str:
+		"""
+		Finds if ticker passed in is found in cmc's tickers
 
+		Args:
+			ticker: the ticker to be checked against cmc's tickers
+
+		Returns:
+			the current ticker for cmc queries
+
+		"""
 		tickers = await self.get_cmc_tickers()
 
 		ticker = ticker.lower()
