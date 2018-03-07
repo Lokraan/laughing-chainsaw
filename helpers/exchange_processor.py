@@ -201,7 +201,7 @@ class ExchangeProcessor:
 				elif self._get_exchange(exchange):
 					ccxt_exchange = self._get_exchange(exchange)
 					if ccxt_exchange:
-
+						print(ccxt_exchange.id)
 						updates = await self.check_exchange_price_updates(
 							ccxt_exchange)
 

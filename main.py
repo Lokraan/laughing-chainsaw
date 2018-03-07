@@ -11,7 +11,7 @@ from bot import Hasami
 
 sys.path.append("helpers/")
 
-from command_processor import CommandProcessor
+from message_processor import MessageProcessor
 import database
 
 CONFIG_FILE = "config.json"

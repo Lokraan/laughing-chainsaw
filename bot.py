@@ -26,18 +26,14 @@ class Hasami:
 	These significant markets are then printed out into a discord server.
 
 	Attributes:
-		client: Client used to communicate with the discord server
-		config: configuration to edit the bot.
-		logger: Logger to be used when logging.
-		_mooning: High significant price change.
-		_free_fall: Low significant price change.
-		_over_bought: High significant RSI val.
-		_over_sold: Low significant RSI val.
+		_client: Client used to communicate with the discord server
+		_logger: Logger to be used when logging.
+		_db: database used to get and store servre data
 		_interval: Time to wait between each analysis of the markets.
-		_rsi_tick_interval: Interval between each price update used to calculate the markets.
-		_rsi_time_frame: Number of candles used to calculate RSI.
+		_prefix: Default prefix used to specify commands.
 
 	"""
+
 	def __init__(self, client: discord.Client, logger: logging.Logger, config: dict, db=None):
 		self._client = client
 		self._logger = logger
@@ -52,12 +48,22 @@ class Hasami:
 
 
 	async def start(self):
+		"""
+		Starts the bot by loading the exchange data for any exchanges to be checked
+		and then starts sending price/rsi signals.
+		"""
+
 		await self._initialize_checker()
 		self._client.loop.create_task(self.send_server_price_update_signals())
 		self._client.loop.create_task(self.send_server_rsi_update_signals())
 
 
 	async def _set_playing_status(self):
+		"""
+		Sets the playing status in disocrd to be the current market cap of
+		cryptocurrencies as a whole.
+		"""
+
 		locale.setlocale(locale.LC_ALL, "")
 
 		while True:
@@ -78,6 +84,17 @@ class Hasami:
 
 	async def add_server_for_signals(self, message: discord.Message, 
 			exchanges: list) -> None:
+
+		"""
+		Swets the output channel and exchanges that the sever wants toget signals for
+		and adds it to the database if it already isn't. Uses bittrex as the default
+		exchange if none are specified.
+
+		Args:
+			message: message used to ask for signals
+			exchanges: exchanges the server wants signals for
+
+		"""
 
 		await self._client.send_message(
 			message.channel , "Starting {0.author.mention} !".format(message)
@@ -105,6 +122,11 @@ class Hasami:
 
 
 	async def _initialize_checker(self) -> None:
+		"""
+		Loads the exchange data for servers that want signals. This allows for the
+		bot to continously get signals without asking again even if bot goes down.
+		"""
+
 		for server in self._client.servers:
 			if not await self._db.server_exists(server.id):
 				await self._db.add_server(server.id, server.name, self._prefix)
@@ -117,6 +139,11 @@ class Hasami:
 
 
 	async def send_server_price_update_signals(self) -> None:
+		"""
+		Goes through all servers that wants price update signals in database 
+		and sends them for the exchanges specified.
+		"""
+
 		while True:
 			servers = await self._db.servers_wanting_signals()
 			if not servers: continue
@@ -135,6 +162,11 @@ class Hasami:
 
 
 	async def send_server_rsi_update_signals(self) -> None:
+		"""
+		Goes through all servers that wants rsi update signals in database 
+		and sends them for the exchanges specified.
+		"""
+
 		while True:
 			servers = await self._db.servers_wanting_signals()
 			if not servers: continue
@@ -154,20 +186,17 @@ class Hasami:
 
 	async def stop_sending_signals(self, message: discord.Message, exchanges: list) -> None:
 		"""
-		Stops checking markets, notifies user who called for it of that it's stopping.
+		Stops checking exchanges for the exchanges given, notifies user who called for 
+		it of that it's stopping. If no exchanges are specified then it stops
+		completely.
 
 		Args:
 			message: The message used to ask the bot to stop, used
 				to mention the user that it's stopping.
-
-		Returns:
-			None
-
-		TODO: 
-			If no markets are specified stop completely, else remove exchanges from being
-			updated.
+			exchanges: exchanges to remove 
 
 		"""
+
 		chan = message.channel
 
 		await self._client.send_message(
@@ -192,10 +221,16 @@ class Hasami:
 
 
 	async def price(self, message: discord.Message, markets: list) -> None:
-		for market in markets:
+		"""
+		Sends price for markets given from cmc in a pretty embed.
 
-			if market == "":
-				continue
+		Args:
+			message: message used to ask for price, sends to message channel
+			markets: markets the prices are asked for
+
+		"""
+
+		for market in markets:
 
 			market = await self.exchange_processor.find_cmc_ticker(market)
 
@@ -208,6 +243,13 @@ class Hasami:
 
 
 	async def crypto_cap(self, message: discord.Message) -> None:
+		"""
+		Sends the cryptocurrency marketcap in a pretty embed to the message that
+		request it's channel.
+
+		Args:
+			message: message used to ask for crypto market cap.
+		"""
 
 		info = await self.exchange_processor.get_crypto_mcap()
 
@@ -227,16 +269,33 @@ class Hasami:
 			None
 
 		"""
+
 		await self._client.send_message(
 			message.channel, "Hello {0.author.mention} !".format(message)
 			)
 
 
 	async def source(self, message: discord.Message) -> None:
+		"""
+		Sends the github link to whoever asked for it.
+
+		Args:
+			message: message used to ask for the source
+		"""
+
 		await self._client.send_message(message.channel, "https://github.com/lokraan/hasami")
 
-	async def change_prefix(self, message: discord.Message, params: list) -> None:
-		await self._db.update_prefix(message.server.id, params[0])
 
-		text = "Changed {0.author.mention} prefix to {1}".format(message, params[0])
+	async def change_prefix(self, message: discord.Message, prefix: str) -> None:
+		"""
+		Changes the prefix for the message's server to the prefix specified.
+
+		Args:
+			message: message used to ask for the prefix change.
+			prefix: prefix to change to
+
+		"""
+		await self._db.update_prefix(message.server.id, prefix)
+
+		text = "Changed {0.author.mention} prefix to {1}".format(message, prefix)
 		await self._client.send_message(message.channel, text)

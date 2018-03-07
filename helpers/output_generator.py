@@ -21,7 +21,7 @@ def get_output(*items: list) -> str:
 		return " ".join(*items)
 
 
-def get_color():
+def get_color() -> hex:
 		r = lambda: random.randint(0, 255)
 		
 		color = (r(), r(), r())
