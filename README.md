@@ -6,7 +6,8 @@ Hasami is a discord bot that provides...
 
 
 ## Adding the bot to your server
-Hasami is currently hosted 24/7 on a vps--[vultr](https://www.vultr.com/?ref=7308111)--and you're more than welcome to use it instead of hosting it yourself. All commands work as specified in the commands section.
+Hasami is currently hosted 24/7 on a vps--[vultr](https://www.vultr.com/?ref=7308111)--and you're more than welcome to use it instead of hosting it yourself. 
+All commands work as specified in the commands section.
 
 [Invite Bot](https://discordapp.com/oauth2/authorize?client_id=392534322894340096&scope=bot)
 
