@@ -1,13 +1,16 @@
 {
 	"token": "your token here",
-	"update_channel": "your channel here", 
-	"free_fall": -4,
-	"mooning": 4,
-	"rsi_tick_interval": "thirtyMin",
-	"rsi_time_frame": 14, 
-	"over_bought": 75,
-	"over_sold": 25,
+	"free_fall": -5,
+	"mooning": 5,
+	"rsi_timeframe": "30m",
+	"rsi_period": 14, 
+	"over_bought": 80,
+	"over_sold": 30,
 	"update_interval": 1,
-	"debug": 0,
-	"command_prefix": "$"
+	"debug": false,
+	"prefix": "$",
+	"dbname": "hasami",
+	"dbuser": "hasami",
+	"dbpass": "password",
+	"dbhost": "localhost"
 }
