@@ -17,10 +17,11 @@ class ServerDatabase:
 		_host: host postgresql is using
 		_passsword: password for the user
 	"""
-	def __init__(self, database, user, host, password=None):
+	def __init__(self, database, user, host, logger, password=None):
 		self._database = database
 		self._user = user
 		self._host = host
+		self._logger = logger
 		self._password = password
 
 		loop = asyncio.get_event_loop()
@@ -56,6 +57,8 @@ class ServerDatabase:
 			host=self._host, password=self._password
 			)
 
+		self._logger.info("Set up database")
+
 
 	async def get_server(self, server_id: str) -> list:
 		"""
@@ -70,6 +73,7 @@ class ServerDatabase:
 			server_id: server whose information is to be selected
 		"""
 		query = "SELECT * FROM servers WHERE id = $1"
+		self._logger.debug("Getting server {0}".format(server_id))
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -103,6 +107,7 @@ class ServerDatabase:
 
 		"""
 		query = "INSERT INTO servers VALUES ($1, $2, $3, $4, $5)"
+		self._logger.debug("Adding server {0}".format(server_id))
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -121,6 +126,7 @@ class ServerDatabase:
 
 		"""
 		query = "SELECT exchanges FROM servers WHERE id = $1"
+		self._logger.debug("Getting exchanges from server {0}".format(server_id))
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -141,6 +147,7 @@ class ServerDatabase:
 
 		"""
 		query = "SELECT output_channel FROM servers WHERE id = $1"
+		self._logger.debug("Getting out_channel from server {0}".format(server_id))
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -161,6 +168,7 @@ class ServerDatabase:
 
 		"""
 		query = "SELECT prefix FROM servers WHERE id = $1"
+		self._logger.debug("Getting prefix from server {0}".format(server_id))
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -181,7 +189,8 @@ class ServerDatabase:
 
 		"""
 		query = "SELECT id, name FROM servers"
-		
+		self._logger.debug("Getting all servers")
+
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
 				res = await conn.fetchval(query, server_id)
@@ -199,6 +208,8 @@ class ServerDatabase:
 
 		"""
 		query = "UPDATE servers SET prefix = $1 WHERE id = $2"
+		self._logger.debug("Updating prefix to {0} for server {1}"\
+			.format(prefix, server_id))
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -215,6 +226,8 @@ class ServerDatabase:
 
 		"""
 		query = "UPDATE servers SET output_channel = $1 WHERE id = $2"
+		self._logger.debug("Updating out_channel to {0} for server {1}"\
+			.format(output_channel, server_id))
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -231,6 +244,8 @@ class ServerDatabase:
 
 		"""
 		query = "UPDATE servers SET exchanges = $1 WHERE id = $2"
+		self._logger.debug("Updating exchanges to {0} for server {1}"\
+			.format(exchanges, server_id))
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -246,6 +261,8 @@ class ServerDatabase:
 			new_exchanges: exchanges to be added
 
 		"""
+		self._logger.debug("Adding exchanges {0} for server {1}"\
+			.format(exchanges, server_id))
 		exchanges = await self.get_exchanges(server_id)
 
 		if exchanges:
@@ -254,8 +271,7 @@ class ServerDatabase:
 			exchanges = new_exchanges
 
 		# remove duplicates
-		exchanges = set(exchanges)
-		exchanges = list(exchanges)
+		exchanges = list(set(exchanges))
 
 		await self.update_exchanges(server_id, exchanges)
 
@@ -269,6 +285,8 @@ class ServerDatabase:
 			new_exchanges: exchanges to be added
 
 		"""
+		self._logger.debug("Removing exchanges {0} for server {1}"\
+			.format(exchanges, server_id))
 		exchanges = await self.get_exchanges(server_id)
 
 		if exchanges:
@@ -284,6 +302,7 @@ class ServerDatabase:
 			the number of servers asking for signals as an integer
 
 		"""
+		self._logger.debug("Getting number update servers")
 		query = "SELECT Count(*) FROM servers WHERE output_channel IS NOT NULL"
 
 		async with self.pool.acquire() as conn:
@@ -301,6 +320,7 @@ class ServerDatabase:
 			a list of all the servers wanting information
 
 		"""
+		self._logger.debug("Getting data for servers that want signals")
 		query = """
 			SELECT id, name, output_channel, exchanges 
 			FROM servers WHERE output_channel IS NOT NULL
