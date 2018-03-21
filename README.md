@@ -14,21 +14,6 @@ All commands work as specified in the commands section.
 If you have any questions feel free to contact me on discord; my username is **Lokraan#3797**
 
 
-## Hosting it yourself.
-For basic personal use you need to set `"token"` to your personal bot's token in [config.json](/config.json). You will also need to install and set up a database for the bot using postgresql on your computer. 
-[this](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-postgresql-on-ubuntu-16-04) is a nice tutorial by digital ocean that walks you through the process. 
-
-After you've done this you'll need to put your database auth info into the config.
-
-
-```json
-"token": "your token",
-"dbname": "your database",
-"dbuser": "your user",
-"dbpass": "your password",
-"dbhost": "localhost"
-```
-
 ### Commands
 | Command  | Description|
 | ------ | ---------- |
@@ -40,6 +25,21 @@ After you've done this you'll need to put your database auth info into the confi
 | `$help`   | Private messages user bot commands and github.                 |
 | `$greet`  | Greets whoever wants to be greeted. |
 | `$source` | Prints the link to this repository. |
+
+
+## Hosting it yourself.
+For basic personal use you need to set `"token"` to your personal bot's token in [config.json](/config.json). You will also need to install and set up a database for the bot using postgresql on your computer. 
+[this](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-postgresql-on-ubuntu-16-04) is a nice tutorial by digital ocean that walks you through the process. 
+
+After you've done this you'll need to put your database auth info into the config.
+
+```json
+"token": "your token",
+"dbname": "your database",
+"dbuser": "your user",
+"dbpass": "your password",
+"dbhost": "localhost"
+```
 
 
 ### Requirements
@@ -103,7 +103,9 @@ When a market's rsi value is greater than or equal to `over_bought` or `over_sol
 <market_name> RSI: <rsi>
 ```
 
+
 ## TODO
 1. Debugging
-2. Configurable RSI timeframes.
-3. Administrative tools and metrics.
+2. Sentiment Analysis
+3. Configurable RSI timeframes.
+4. Administrative tools and metrics.

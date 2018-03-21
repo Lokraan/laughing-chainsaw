@@ -33,10 +33,11 @@ def setup_logging(config: dict) -> None:
 	cl_handler = logging.StreamHandler()
 
 	dt_fmt = "%Y-%m-%d %H:%M:%S"
-	fmt = logging.Formatter("[{asctime}] [{levelname:<6}] {name}: {message}", dt_fmt, style="{")
+	out_fmt = "[{asctime}] [{levelname:<6}] {name}: {message}"
+	logger_fmt = logging.Formatter(out_fmt, dt_fmt, style="{")
 
-	cl_handler.setFormatter(fmt)
-	f_handler.setFormatter(fmt)
+	cl_handler.setFormatter(logger_fmt)
+	f_handler.setFormatter(logger_fmt)
 
 	logger.addHandler(cl_handler)
 	logger.addHandler(f_handler)
@@ -56,8 +57,8 @@ if __name__ == '__main__':
 	db = database.ServerDatabase(config["dbuser"], config["dbname"], 
 		config["dbhost"], config["dbpass"])
 
-	bot = Hasami(client=client, logger=logging.getLogger("bot"), config=config, db=db)
-	command_processor = MessageProcessor(client, bot, logger, db)
+	bot = Hasami(client, logger, config, db)
+	message_processor = MessageProcessor(client, bot, config["prefix"], logger, db)
 
 	# client events
 	@client.event
@@ -68,7 +69,7 @@ if __name__ == '__main__':
 
 	@client.event
 	async def on_message(message):
-		await command_processor.process_message(message)
+		await message_processor.process_message(message)
 
 
 	@client.event

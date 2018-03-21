@@ -34,7 +34,9 @@ class Hasami:
 
 	"""
 
-	def __init__(self, client: discord.Client, logger: logging.Logger, config: dict, db=None):
+	def __init__(self, client: discord.Client, logger: logging.Logger, 
+			config: dict, db=None):
+
 		self._client = client
 		self._logger = logger
 		self._db = db
@@ -115,10 +117,8 @@ class Hasami:
 		await self._db.update_output_channel(server_id, message.channel.id)
 		await self._db.add_exchanges(server_id, exchanges)
 
-		text = "Added {0.server.name}-{0.channel} to rsi/update outputs and checking {1}"\
-			.format(message, exchanges)
-
-		self._logger.info(text)
+		text = "Added {0.server.name}-{0.channel} to rsi/update outputs and checking {1}"
+		self._logger.info(text.format(message, exchanges))
 
 
 	async def _initialize_checker(self) -> None:
