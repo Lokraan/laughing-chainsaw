@@ -111,11 +111,11 @@ class Hasami:
 		if not await self._db.server_exists(server_id):
 			await self._db.add_server(server_id, server_name, self._base_prefix)
 
-		# load markets
-		await self.exchange_processor.load_exchanges(exchanges)
-
 		await self._db.update_output_channel(server_id, message.channel.id)
 		await self._db.add_exchanges(server_id, exchanges)
+
+		# load markets
+		await self.exchange_processor.load_exchanges(exchanges)
 
 		text = "Added {0.server.name}-{0.channel} to rsi/update outputs and checking {1}"
 		self._logger.info(text.format(message, exchanges))
