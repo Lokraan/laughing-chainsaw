@@ -14,6 +14,7 @@ sys.path.append("helpers/")
 from message_processor import MessageProcessor
 import database
 
+
 CONFIG_FILE = "config.json"
 
 def get_config() -> dict:
@@ -55,7 +56,7 @@ if __name__ == '__main__':
 	logger = logging.getLogger()
 
 	db = database.ServerDatabase(config["dbuser"], config["dbname"], 
-		config["dbhost"], config["dbpass"])
+		config["dbhost"], logger, config["dbpass"])
 
 	bot = Hasami(client, logger, config, db)
 	message_processor = MessageProcessor(client, bot, config["prefix"], logger, db)

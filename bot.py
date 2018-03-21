@@ -26,9 +26,9 @@ class Hasami:
 	These significant markets are then printed out into a discord server.
 
 	Attributes:
-		_client: Client used to communicate with the discord server
+		_client: Client used to communicate with the discord server.
 		_logger: Logger to be used when logging.
-		_db: database used to get and store servre data
+		_db: database used to get and store servre data.
 		_interval: Time to wait between each analysis of the markets.
 		_prefix: Default prefix used to specify commands.
 
@@ -146,7 +146,11 @@ class Hasami:
 
 		while True:
 			servers = await self._db.servers_wanting_signals()
-			if not servers: continue
+
+			if not servers:
+				await asyncio.sleep(int(self._interval * 60))
+				continue
+
 			try: 
 				data = self.exchange_processor.yield_exchange_price_updates(servers)
 				async for channel, embed in data:
@@ -169,7 +173,11 @@ class Hasami:
 
 		while True:
 			servers = await self._db.servers_wanting_signals()
-			if not servers: continue
+
+			if not servers: 
+				await asyncio.sleep(int(self._interval * 60))
+				continue
+
 			try:
 				data = self.exchange_processor.yield_exchange_rsi_updates(servers)
 				async for channel, embed in data:
