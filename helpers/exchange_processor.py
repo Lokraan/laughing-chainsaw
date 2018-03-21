@@ -33,7 +33,7 @@ class ExchangeProcessor:
 		self._significant_markets = set()
 
 		self._aretry = tenacity.AsyncRetrying(
-			wait=tenacity.wait_random(0, 2),
+			wait=tenacity.wait_random(0, 3),
 			retry=(
 				tenacity.retry_if_exception(ccxt.DDoSProtection) | 
 				tenacity.retry_if_exception(ccxt.RequestTimeout) |
@@ -81,16 +81,17 @@ class ExchangeProcessor:
 			None
 		
 		"""
+		self._logger.debug("Loading exchanges {0}".format(exchanges))
 
 		for exchange in exchanges:
 			exchange = self._get_exchange(exchange)
 
 			# ensure it hasn't been loaded yet
 			if exchange and exchange.id not in self._exchange_market_prices:
-				prices = {}
 				tickers = await self._fetch_all_tickers(exchange)
 
 				# puts the prices for each exchange in data
+				prices = {}
 				for ticker in tickers:
 					symbol = ticker["symbol"]
 					prices[symbol] = ticker["last"]
@@ -125,11 +126,10 @@ class ExchangeProcessor:
 			a dict of all the updates and their corresponding symbols
 
 		"""
-		price_updates = {}
+		tickers = await self._fetch_all_tickers(exchange)
 
 		old_prices = self._exchange_market_prices[exchange.id]
-
-		tickers = await self._fetch_all_tickers(exchange)
+		price_updates = {}
 
 		for ticker in tickers:
 			
