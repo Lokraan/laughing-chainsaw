@@ -81,7 +81,7 @@ class ExchangeProcessor:
 			None
 		
 		"""
-		self._logger.debug("Loading exchanges {0}".format(exchanges))
+		self._logger.info("Loading exchanges {0}".format(exchanges))
 
 		for exchange in exchanges:
 			exchange = self._get_exchange(exchange)
@@ -264,6 +264,8 @@ class ExchangeProcessor:
 
 							processed_exchanges[exchange] = embed
 							outputs.append(embed)
+
+					ccxt_exchange.close()
 						
 			self._logger.debug(outputs)
 

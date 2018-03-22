@@ -262,7 +262,7 @@ class ServerDatabase:
 
 		"""
 		self._logger.debug("Adding exchanges {0} for server {1}"\
-			.format(exchanges, server_id))
+			.format(new_exchanges, server_id))
 		exchanges = await self.get_exchanges(server_id)
 
 		if exchanges:
@@ -286,7 +286,7 @@ class ServerDatabase:
 
 		"""
 		self._logger.debug("Removing exchanges {0} for server {1}"\
-			.format(exchanges, server_id))
+			.format(removed_exchanges, server_id))
 		exchanges = await self.get_exchanges(server_id)
 
 		if exchanges:
