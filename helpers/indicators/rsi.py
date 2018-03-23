@@ -58,6 +58,11 @@ def calc_rsi(data: list, period: int) -> int:
 		avg_gain = (avg_gain * (period - 1) + gain) / period
 		avg_loss = (avg_loss * (period - 1) + loss) / period
 
+	if avg_gain == 0:
+		return 0
+	elif avg_loss == 0:
+		return 100
+
 	RS = avg_gain / avg_loss
 	RSI = 100 - ( 100 / (1 + RS))
 

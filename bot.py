@@ -26,15 +26,17 @@ class Hasami:
 	These significant markets are then printed out into a discord server.
 
 	Attributes:
-		_client: Client used to communicate with the discord server
+		_client: Client used to communicate with the discord server.
 		_logger: Logger to be used when logging.
-		_db: database used to get and store servre data
+		_db: database used to get and store servre data.
 		_interval: Time to wait between each analysis of the markets.
 		_prefix: Default prefix used to specify commands.
 
 	"""
 
-	def __init__(self, client: discord.Client, logger: logging.Logger, config: dict, db=None):
+	def __init__(self, client: discord.Client, logger: logging.Logger, 
+			config: dict, db=None):
+
 		self._client = client
 		self._logger = logger
 		self._db = db
@@ -115,10 +117,8 @@ class Hasami:
 		await self._db.update_output_channel(server_id, message.channel.id)
 		await self._db.add_exchanges(server_id, exchanges)
 
-		text = "Added {0.server.name}-{0.channel} to rsi/update outputs and checking {1}"\
-			.format(message, exchanges)
-
-		self._logger.info(text)
+		text = "Added {0.server.name}-{0.channel} to rsi/update outputs and checking {1}"
+		self._logger.info(text.format(message, exchanges))
 
 
 	async def _initialize_checker(self) -> None:
@@ -133,9 +133,11 @@ class Hasami:
 
 			elif await self._db.get_output_channel(server.id):
 				exchanges = await self._db.get_exchanges(server.id)
-				self._logger.info("Loading exchanges {0}".format(exchanges))
 
-				await self.exchange_processor.load_exchanges(exchanges)
+				if not exchanges == None:
+					self._logger.info("Loading exchanges {0}".format(exchanges))
+
+					await self.exchange_processor.load_exchanges(exchanges)
 
 
 	async def send_server_price_update_signals(self) -> None:
@@ -146,7 +148,11 @@ class Hasami:
 
 		while True:
 			servers = await self._db.servers_wanting_signals()
-			if not servers: continue
+
+			if not servers:
+				await asyncio.sleep(int(self._interval * 60))
+				continue
+
 			try: 
 				data = self.exchange_processor.yield_exchange_price_updates(servers)
 				async for channel, embed in data:
@@ -169,7 +175,11 @@ class Hasami:
 
 		while True:
 			servers = await self._db.servers_wanting_signals()
-			if not servers: continue
+
+			if not servers: 
+				await asyncio.sleep(int(self._interval * 60))
+				continue
+
 			try:
 				data = self.exchange_processor.yield_exchange_rsi_updates(servers)
 				async for channel, embed in data:
