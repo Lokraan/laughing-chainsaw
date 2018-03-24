@@ -38,9 +38,9 @@ class MessageProcessor:
 		"""
 
 		chann = message.channel
-		permissions = chann.permissions_for(user)
+		permissions = chann.permissions_for(message.author)
 
-		return premissions.administrator
+		return permissions.administrator
 
 
 	async def process_message(self, message: discord.Message) -> None:
@@ -131,6 +131,7 @@ class MessageProcessor:
 					"https://github.com/lokraan/hasami")
 
 			elif cmd == "prefix":
+				print(params)
 				if self.is_admin(message) and len(params) > 0:
 					await self._bot.change_prefix(message, params[0])
 
