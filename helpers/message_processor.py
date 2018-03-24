@@ -16,7 +16,8 @@ class MessageProcessor:
 		_bot: bot used to process commands
 		_db: db used to get server preferences for commands 
 	"""
-	def __init__(self, client, bot, logger, db):
+	def __init__(self, client, bot, base_prefix, logger, db):
+		self.base_prefix = base_prefix
 		self._client = client
 		self._logger = logger
 		self._bot = bot
@@ -67,10 +68,12 @@ class MessageProcessor:
 
 		content = message.content
 
-		prefix = await self._db.get_prefix(message.server.id)
+		server_id = message.server.id
+		prefix = await self._db.get_prefix(server_id)
 
 		if prefix == None:
-			pass
+			prefix = self.base_prefix
+			await self._db.update_prefix(server_id, prefix)
 
 		if content.startswith(prefix):
 			content = content.replace(prefix, "", 1)
@@ -124,6 +127,7 @@ class MessageProcessor:
 				await self._bot.price(message, params)
 
 			elif cmd == "cap":
+				text = "{0.author} asked for crypto marketcap".format(message)
 				await self._bot.crypto_cap(message)
 
 			elif cmd == "source":
@@ -131,12 +135,24 @@ class MessageProcessor:
 					"https://github.com/lokraan/hasami")
 
 			elif cmd == "prefix":
+<<<<<<< HEAD
 				print(params)
+=======
+				text = "{0.author} asked for prefix change {1}".format(message, params[0])
+				self._logger.info(text)
+>>>>>>> 37e5fba0a77aae71a63f666342b67cd1d51ac8b3
 				if self.is_admin(message) and len(params) > 0:
 					await self._bot.change_prefix(message, params[0])
 
 			elif cmd in ccxt.exchanges:
-				await self._bot.price(message, markets, exchange=getattr(ccxt, exchange))
+				text = "{0.author} asked to start checking exchange {1}"
+				text = text.format(message, cmd)
+				self._logger.info(text)
+				await self._bot.add_server_for_signals(message, [cmd])
 
 			elif await self._ep.find_cmc_ticker(cmd):
-				await self._bot.price(message, [cmd])
+				params.insert(0, cmd)
+
+				text = "{0.author} asked for tickers {1}".format(message, params)
+				self._logger.info(text)
+				await self._bot.price(message, params)

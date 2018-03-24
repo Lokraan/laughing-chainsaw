@@ -1,0 +1,11 @@
+[2018-03-24 15:23:25] [INFO  ] discord.client: on_ready has successfully been registered as an event
+[2018-03-24 15:23:25] [INFO  ] discord.client: on_message has successfully been registered as an event
+[2018-03-24 15:23:25] [INFO  ] discord.client: on_server_join has successfully been registered as an event
+[2018-03-24 15:23:25] [INFO  ] discord.client: logging in using static token
+[2018-03-24 15:23:28] [INFO  ] discord.gateway: Created websocket connected to wss://gateway.discord.gg?encoding=json&v=6
+[2018-03-24 15:23:28] [INFO  ] discord.gateway: sent the identify payload to create the websocket
+[2018-03-24 15:23:30] [INFO  ] root: logged in as Hasami
+[2018-03-24 15:23:30] [INFO  ] bot: Loading exchanges ['bittrex']
+[2018-03-24 15:23:30] [INFO  ] bot: Setting market cap $343,344,147,444.00
+[2018-03-24 15:23:37] [INFO  ] bot: Checking exchanges ['bittrex'] price updates for server 392534879738396672 (Test)
+[2018-03-24 15:23:37] [INFO  ] bot: Checking exchanges ['bittrex'] rsi updates for server 392534879738396672 (Test)
