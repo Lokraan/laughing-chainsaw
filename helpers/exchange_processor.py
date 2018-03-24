@@ -264,8 +264,6 @@ class ExchangeProcessor:
 
 							processed_exchanges[exchange] = embed
 							outputs.append(embed)
-
-					ccxt_exchange.close()
 						
 			self._logger.debug(outputs)
 

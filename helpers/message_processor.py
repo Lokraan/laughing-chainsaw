@@ -135,12 +135,8 @@ class MessageProcessor:
 					"https://github.com/lokraan/hasami")
 
 			elif cmd == "prefix":
-<<<<<<< HEAD
-				print(params)
-=======
 				text = "{0.author} asked for prefix change {1}".format(message, params[0])
 				self._logger.info(text)
->>>>>>> 37e5fba0a77aae71a63f666342b67cd1d51ac8b3
 				if self.is_admin(message) and len(params) > 0:
 					await self._bot.change_prefix(message, params[0])
 
