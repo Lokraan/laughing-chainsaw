@@ -215,7 +215,47 @@ class ExchangeProcessor:
 
 		return rsi_updates
 
-	
+
+	async def _process_exchanges(self, processed_exchanges: dict,
+			exchanges: list, processor, output_processor) -> (dict, list):
+		"""
+		Process all exchanges that haven't been processed yet.
+		If hasn't been processed, then store the results of the processing in memory to be reused.
+
+		Args:
+			processed_exchanges: Exchanges that have already been processed.
+			exchanges: Exchanges to be processed.
+
+		Returns:
+			A tuple of the processed_exchanges and a list of the exchanges.
+		"""
+
+		outputs = []
+
+		text = "Checking exchanges {exchanges} updates for server {server_id} ({server_name})" 
+		self._logger.info(text)
+
+		for exchange in exchanges:
+			# if exchange has already been procesed, use processed data
+			if exchange in processed_exchanges:
+				outputs.append(processed_exchanges[exchange])
+
+			# else generate it and store it as processed
+			elif self._get_exchange(exchange):
+				ccxt_exchange = self._get_exchange(exchange)
+				if ccxt_exchange:
+					updates = await processor(ccxt_exchange)
+
+					self._logger.debug("Processor Updates: {0}".format(updates))
+					if updates:
+						output = output_processor(updates)
+
+						processed_exchanges[exchange] = output
+						outputs.append(output)
+
+		return (processed_exchanges, exchanges)
+
+
 	async def yield_exchange_price_updates(self, servers) -> None:
 		"""
 		Checks for price updates in all of the exchanges the server wants checked.
@@ -241,31 +281,12 @@ class ExchangeProcessor:
 
 			if exchanges == None: continue
 
-			outputs = []
+			processed_exchanges, outputs = self._process_exchanges(
+				processed_exchanges, exchanges, self.check_exchange_price_updates,
+				og.create_price_update_embed
+			)
 
-			self._logger.info("Checking exchanges {0} price updates for server {1} ({2})".format(
-				exchanges, server_id, server_name))
-
-			for exchange in exchanges:
-				# if exchange has already been procesed, use processed data
-				if exchange in processed_exchanges:
-					outputs.append(processed_exchanges[exchange])
-
-				# else generate it and store it as processed
-				elif self._get_exchange(exchange):
-					ccxt_exchange = self._get_exchange(exchange)
-					if ccxt_exchange:
-						updates = await self.check_exchange_price_updates(
-							ccxt_exchange)
-
-						self._logger.debug("Price Updates: {0}".format(updates))
-						if updates:
-							embed = og.create_price_update_embed(updates)
-
-							processed_exchanges[exchange] = embed
-							outputs.append(embed)
-						
-			self._logger.debug(outputs)
+			self._logger.debug(f"Exchange price update outputs {outputs}")
 
 			# prob can re write this and keep it inside exchange filtering loop
 			for embed in outputs:
@@ -300,35 +321,16 @@ class ExchangeProcessor:
 
 			outputs = []
 
-			self._logger.info("Checking exchanges {0} rsi updates for server {1} ({2})".format(
-				exchanges, server_id, server_name))
+			processed_exchanges, outputs = self._process_exchanges(
+				processed_exchanges, exchanges, self.check_exchange_rsi_updates,
+				og.create_rsi_update_embed
+			)
 
-			for exchange in exchanges:
-				# if exchange has already been procesed, use processed data
-				if exchange in processed_exchanges:
-					outputs.append(processed_exchanges[exchange])
-
-				# else generate it and store it as processed
-				elif self._get_exchange(exchange):
-					ccxt_exchange = self._get_exchange(exchange)
-					if ccxt_exchange:
-
-						updates = await self.check_exchange_rsi_updates(ccxt_exchange)
-
-						self._logger.debug("RSI Updates: {0}".format(updates))
-
-						if updates:
-							embed = og.create_rsi_update_embed(updates)
-
-							processed_exchanges[exchange] = embed
-							outputs.append(embed)
-						
-			self._logger.debug(outputs)
+			self._logger.debug(f"Exchange RSI update outputs: {outputs}")
 
 			# prob can re write this and keep it inside exchange filtering loop
 			for embed in outputs:
 				yield [channel, embed]
-
 
 
 	async def _fetch_data(self, url: str) -> dict:
