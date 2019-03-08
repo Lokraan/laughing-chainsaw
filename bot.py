@@ -76,7 +76,7 @@ class Hasami:
 			mc = int(data["total_market_cap_usd"])
 			mc = locale.currency(mc, grouping=True)
 
-			self._logger.info("Setting market cap {0}".format(mc))
+			self._logger.info(f"Setting market cap {mc}")
 
 			await self._client.change_presence(
 				game=discord.Game(name=mc))
@@ -99,7 +99,7 @@ class Hasami:
 		"""
 
 		await self._client.send_message(
-			message.channel , "Starting {0.author.mention} !".format(message)
+			message.channel , f"Starting {message.author.mention} !"
 			)
 
 		if not exchanges:
@@ -135,7 +135,7 @@ class Hasami:
 				exchanges = await self._db.get_exchanges(server.id)
 
 				if not exchanges == None:
-					self._logger.info("Loading exchanges {0}".format(exchanges))
+					self._logger.info(f"Loading exchanges {exchanges}")
 
 					await self.exchange_processor.load_exchanges(exchanges)
 
@@ -210,20 +210,18 @@ class Hasami:
 		chan = message.channel
 
 		await self._client.send_message(
-			message.channel, "Stopping {0.author.mention} !".format(message))
+			message.channel, f"Stopping {message.author.mention} !")
 
 		server_id = message.server.id
 		await self._db.update_output_channel(server_id, None)
 		
 		if len(exchanges) == 0:
-			text = "Removing {0.server.name}-{1} from update channels"\
-				.format(message, chan)
+			text = f"Removing {message.server.name}-{chan} from update channels"
 
 			await self._db.update_exchanges(server_id, None)
 
 		else:
-			text = "Removing exchanges {2} from {0.server.name}-{1}"\
-				.format(message, chan, exchanges)
+			text = f"Removing exchanges {message} from {chan.server.name}-{exchanges}"
 
 			await self._db.remove_exchanges(server_id, exchanges)
 
@@ -281,8 +279,7 @@ class Hasami:
 		"""
 
 		await self._client.send_message(
-			message.channel, "Hello {0.author.mention} !".format(message)
-			)
+			message.channel, f"Hello {message.author.mention} !")
 
 
 	async def source(self, message: discord.Message) -> None:
@@ -307,5 +304,5 @@ class Hasami:
 		"""
 		await self._db.update_prefix(message.server.id, prefix)
 
-		text = "Changed {0.author.mention} prefix to {1}".format(message, prefix)
+		text = f"Changed {message.author.mention} prefix to {prefix}"
 		await self._client.send_message(message.channel, text)

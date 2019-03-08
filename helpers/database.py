@@ -73,7 +73,7 @@ class ServerDatabase:
 			server_id: server whose information is to be selected
 		"""
 		query = "SELECT * FROM servers WHERE id = $1"
-		self._logger.debug("Getting server {0}".format(server_id))
+		self._logger.debug(f"Getting server {server_id}")
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -107,7 +107,7 @@ class ServerDatabase:
 
 		"""
 		query = "INSERT INTO servers VALUES ($1, $2, $3, $4, $5)"
-		self._logger.debug("Adding server {0}".format(server_id))
+		self._logger.debug(f"Adding server {server_id}")
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -126,7 +126,7 @@ class ServerDatabase:
 
 		"""
 		query = "SELECT exchanges FROM servers WHERE id = $1"
-		self._logger.debug("Getting exchanges from server {0}".format(server_id))
+		self._logger.debug(f"Getting exchanges from server {server_id}")
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -147,7 +147,7 @@ class ServerDatabase:
 
 		"""
 		query = "SELECT output_channel FROM servers WHERE id = $1"
-		self._logger.debug("Getting out_channel from server {0}".format(server_id))
+		self._logger.debug(f"Getting out_channel from server {server_id}")
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -168,7 +168,7 @@ class ServerDatabase:
 
 		"""
 		query = "SELECT prefix FROM servers WHERE id = $1"
-		self._logger.debug("Getting prefix from server {0}".format(server_id))
+		self._logger.debug(f"Getting prefix from server {server_id}")
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -208,8 +208,7 @@ class ServerDatabase:
 
 		"""
 		query = "UPDATE servers SET prefix = $1 WHERE id = $2"
-		self._logger.debug("Updating prefix to {0} for server {1}"\
-			.format(prefix, server_id))
+		self._logger.debug(f"Updating prefix to {prefix} for server {server_id}")
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -226,8 +225,7 @@ class ServerDatabase:
 
 		"""
 		query = "UPDATE servers SET output_channel = $1 WHERE id = $2"
-		self._logger.debug("Updating out_channel to {0} for server {1}"\
-			.format(output_channel, server_id))
+		self._logger.debug(f"Updating out_channel to {output_channel} for server {server_id}")
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -244,8 +242,7 @@ class ServerDatabase:
 
 		"""
 		query = "UPDATE servers SET exchanges = $1 WHERE id = $2"
-		self._logger.debug("Updating exchanges to {0} for server {1}"\
-			.format(exchanges, server_id))
+		self._logger.debug(f"Updating exchanges to {exchanges} for server {server_id}")
 
 		async with self.pool.acquire() as conn:
 			async with conn.transaction():
@@ -261,8 +258,8 @@ class ServerDatabase:
 			new_exchanges: exchanges to be added
 
 		"""
-		self._logger.debug("Adding exchanges {0} for server {1}"\
-			.format(new_exchanges, server_id))
+		self._logger.debug(f"Adding exchanges {new_exchanges} for server {server_id}")
+
 		exchanges = await self.get_exchanges(server_id)
 
 		if exchanges:
@@ -285,8 +282,7 @@ class ServerDatabase:
 			new_exchanges: exchanges to be added
 
 		"""
-		self._logger.debug("Removing exchanges {0} for server {1}"\
-			.format(removed_exchanges, server_id))
+		self._logger.debug(f"Removing exchanges {removed_exchanges} for server {server_id}")
 		exchanges = await self.get_exchanges(server_id)
 
 		if exchanges:

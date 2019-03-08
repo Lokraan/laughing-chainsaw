@@ -81,7 +81,7 @@ class ExchangeProcessor:
 			None
 		
 		"""
-		self._logger.info("Loading exchanges {0}".format(exchanges))
+		self._logger.info(f"Loading exchanges {exchanges}")
 
 		for exchange in exchanges:
 			exchange = self._get_exchange(exchange)
@@ -230,7 +230,7 @@ class ExchangeProcessor:
 		"""
 		processed_exchanges = {}
 
-		self._logger.debug("Yielding exchange rsi updates for servers {0}".format(servers))
+		self._logger.debug(f"Yielding exchange rsi updates for servers {servers}")
 		for server in servers:
 
 			server_id = server["id"]
